@@ -1,0 +1,10 @@
+config {
+  type: "table",
+  schema: "staging"
+}
+
+SELECT
+  customer_id,
+  ${utils.normalize("customer_name")} AS customer_name,
+  country
+FROM ${ref("raw", "customers")}

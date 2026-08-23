@@ -1,0 +1,24 @@
+config {
+  type: "table",
+  schema: "marts",
+  description: "Customer KPI mart",
+  tags: ["marts", "kpi"],
+  columns: {
+    customer_id: "Customer identifier",
+    customer_name: "Normalized customer name",
+    total_amount: "Total session amount per customer",
+    session_count: "Number of sessions",
+    snapshot_date: "Load date (no upstream lineage)"
+  }
+}
+
+SELECT
+  c.customer_id,
+  c.customer_name,
+  SUM(s.amount) AS total_amount,
+  COUNT(DISTINCT s.session_id) AS session_count,
+  CURRENT_DATE() AS snapshot_date
+FROM ${ref("int_sessions")} AS s
+JOIN ${ref("stg_customers")} AS c
+  ON s.customer_id = c.customer_id
+GROUP BY c.customer_id, c.customer_name

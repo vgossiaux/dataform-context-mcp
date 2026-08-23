@@ -1,0 +1,13 @@
+config {
+  type: "operations",
+  schema: "intermediate",
+  hasOutput: true
+}
+
+MERGE ${self()} AS t
+USING (
+  SELECT event_id, amount FROM ${ref("stg_events")}
+) AS s
+ON t.event_id = s.event_id
+WHEN MATCHED THEN UPDATE SET amount = s.amount
+WHEN NOT MATCHED THEN INSERT (event_id, amount) VALUES (s.event_id, s.amount)

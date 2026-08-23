@@ -1,0 +1,9 @@
+config {
+  type: "view",
+  schema: "marts"
+}
+
+SELECT
+  event_id,
+  amount
+FROM ${ref("ops_merge_snapshot")}

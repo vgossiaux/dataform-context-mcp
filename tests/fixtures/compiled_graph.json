@@ -1,0 +1,346 @@
+{
+    "tables": [
+        {
+            "type": "table",
+            "target": {
+                "schema": "staging",
+                "name": "stg_customers",
+                "database": "fixture-project"
+            },
+            "query": "\n\nSELECT\n  customer_id,\n  LOWER(TRIM(customer_name)) AS customer_name,\n  country\nFROM `fixture-project.raw.customers`\n",
+            "disabled": false,
+            "fileName": "definitions/transforms/01_staging/stg_customers.sqlx",
+            "dependencyTargets": [
+                {
+                    "schema": "raw",
+                    "name": "customers",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "staging",
+                "name": "stg_customers",
+                "database": "fixture-project"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "staging",
+                "name": "stg_events",
+                "database": "fixture-project"
+            },
+            "query": "\n\nSELECT\n  event_id,\n  customer_id,\n  session_id,\n  LOWER(TRIM(event_name)) AS event_name,\n  amount,\n  event_ts,\n  items\nFROM `fixture-project.raw.events`\n",
+            "disabled": false,
+            "fileName": "definitions/transforms/01_staging/stg_events.sqlx",
+            "tags": [
+                "staging"
+            ],
+            "actionDescriptor": {
+                "columns": [
+                    {
+                        "description": "Unique event identifier",
+                        "path": [
+                            "event_id"
+                        ]
+                    },
+                    {
+                        "description": "Transaction amount in EUR",
+                        "path": [
+                            "amount"
+                        ]
+                    }
+                ]
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "raw",
+                    "name": "events",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "staging",
+                "name": "stg_events",
+                "database": "fixture-project"
+            },
+            "enumType": "VIEW"
+        },
+        {
+            "type": "incremental",
+            "target": {
+                "schema": "intermediate",
+                "name": "int_sessions",
+                "database": "fixture-project"
+            },
+            "query": "\n\nSELECT\n  e.session_id,\n  ANY_VALUE(e.customer_id) AS customer_id,\n  MIN(e.event_ts) AS session_start,\n  SUM(e.amount) AS amount,\n  SUM(item.qty) AS item_qty\nFROM `fixture-project.staging.stg_events` AS e, UNNEST(e.items) AS item\nWHERE TRUE\n\nGROUP BY e.session_id\n",
+            "disabled": false,
+            "fileName": "definitions/transforms/02_intermediate/int_sessions.sqlx",
+            "actionDescriptor": {
+                "description": "Sessionized events with unnested item quantities"
+            },
+            "incrementalQuery": "\n\nSELECT\n  e.session_id,\n  ANY_VALUE(e.customer_id) AS customer_id,\n  MIN(e.event_ts) AS session_start,\n  SUM(e.amount) AS amount,\n  SUM(item.qty) AS item_qty\nFROM `fixture-project.staging.stg_events` AS e, UNNEST(e.items) AS item\nWHERE TRUE\nAND e.event_ts > (SELECT MAX(session_start) FROM `fixture-project.intermediate.int_sessions`)\nGROUP BY e.session_id\n",
+            "dependencyTargets": [
+                {
+                    "schema": "staging",
+                    "name": "stg_events",
+                    "database": "fixture-project"
+                }
+            ],
+            "uniqueKey": [
+                "session_id"
+            ],
+            "canonicalTarget": {
+                "schema": "intermediate",
+                "name": "int_sessions",
+                "database": "fixture-project"
+            },
+            "enumType": "INCREMENTAL"
+        },
+        {
+            "type": "table",
+            "target": {
+                "schema": "marts",
+                "name": "mart_kpis",
+                "database": "fixture-project"
+            },
+            "query": "\n\nSELECT\n  c.customer_id,\n  c.customer_name,\n  SUM(s.amount) AS total_amount,\n  COUNT(DISTINCT s.session_id) AS session_count,\n  CURRENT_DATE() AS snapshot_date\nFROM `fixture-project.intermediate.int_sessions` AS s\nJOIN `fixture-project.staging.stg_customers` AS c\n  ON s.customer_id = c.customer_id\nGROUP BY c.customer_id, c.customer_name\n",
+            "disabled": false,
+            "fileName": "definitions/transforms/04_marts/mart_kpis.sqlx",
+            "tags": [
+                "marts",
+                "kpi"
+            ],
+            "actionDescriptor": {
+                "description": "Customer KPI mart",
+                "columns": [
+                    {
+                        "description": "Customer identifier",
+                        "path": [
+                            "customer_id"
+                        ]
+                    },
+                    {
+                        "description": "Normalized customer name",
+                        "path": [
+                            "customer_name"
+                        ]
+                    },
+                    {
+                        "description": "Total session amount per customer",
+                        "path": [
+                            "total_amount"
+                        ]
+                    },
+                    {
+                        "description": "Number of sessions",
+                        "path": [
+                            "session_count"
+                        ]
+                    },
+                    {
+                        "description": "Load date (no upstream lineage)",
+                        "path": [
+                            "snapshot_date"
+                        ]
+                    }
+                ]
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "intermediate",
+                    "name": "int_sessions",
+                    "database": "fixture-project"
+                },
+                {
+                    "schema": "staging",
+                    "name": "stg_customers",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "marts",
+                "name": "mart_kpis",
+                "database": "fixture-project"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "marts",
+                "name": "mart_ops",
+                "database": "fixture-project"
+            },
+            "query": "\n\nSELECT\n  event_id,\n  amount\nFROM `fixture-project.intermediate.ops_merge_snapshot`\n",
+            "disabled": false,
+            "fileName": "definitions/transforms/04_marts/mart_ops.sqlx",
+            "dependencyTargets": [
+                {
+                    "schema": "intermediate",
+                    "name": "ops_merge_snapshot",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "marts",
+                "name": "mart_ops",
+                "database": "fixture-project"
+            },
+            "enumType": "VIEW"
+        }
+    ],
+    "operations": [
+        {
+            "target": {
+                "schema": "intermediate",
+                "name": "ops_merge_snapshot",
+                "database": "fixture-project"
+            },
+            "queries": [
+                "\n\nMERGE `fixture-project.intermediate.ops_merge_snapshot` AS t\nUSING (\n  SELECT event_id, amount FROM `fixture-project.staging.stg_events`\n) AS s\nON t.event_id = s.event_id\nWHEN MATCHED THEN UPDATE SET amount = s.amount\nWHEN NOT MATCHED THEN INSERT (event_id, amount) VALUES (s.event_id, s.amount)\n"
+            ],
+            "fileName": "definitions/transforms/02_intermediate/ops_merge_snapshot.sqlx",
+            "hasOutput": true,
+            "dependencyTargets": [
+                {
+                    "schema": "staging",
+                    "name": "stg_events",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "intermediate",
+                "name": "ops_merge_snapshot",
+                "database": "fixture-project"
+            }
+        }
+    ],
+    "assertions": [
+        {
+            "query": "\n\nSELECT *\nFROM `fixture-project.marts.mart_kpis`\nWHERE total_amount < 0\n",
+            "fileName": "definitions/assertions/assert_mart_kpis_positive.sqlx",
+            "target": {
+                "schema": "fixture_assertions",
+                "name": "assert_mart_kpis_positive",
+                "database": "fixture-project"
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "marts",
+                    "name": "mart_kpis",
+                    "database": "fixture-project"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "fixture_assertions",
+                "name": "assert_mart_kpis_positive",
+                "database": "fixture-project"
+            }
+        }
+    ],
+    "projectConfig": {
+        "warehouse": "bigquery",
+        "defaultSchema": "fixture_dataset",
+        "assertionSchema": "fixture_assertions",
+        "defaultDatabase": "fixture-project",
+        "defaultLocation": "EU"
+    },
+    "graphErrors": {},
+    "declarations": [
+        {
+            "target": {
+                "schema": "legacy",
+                "name": "events",
+                "database": "fixture-project"
+            },
+            "fileName": "definitions/sources/legacy_events.sqlx",
+            "canonicalTarget": {
+                "schema": "legacy",
+                "name": "events",
+                "database": "fixture-project"
+            }
+        },
+        {
+            "target": {
+                "schema": "raw",
+                "name": "customers",
+                "database": "fixture-project"
+            },
+            "fileName": "definitions/sources/raw_customers.sqlx",
+            "canonicalTarget": {
+                "schema": "raw",
+                "name": "customers",
+                "database": "fixture-project"
+            }
+        },
+        {
+            "target": {
+                "schema": "raw",
+                "name": "events",
+                "database": "fixture-project"
+            },
+            "fileName": "definitions/sources/raw_events.sqlx",
+            "canonicalTarget": {
+                "schema": "raw",
+                "name": "events",
+                "database": "fixture-project"
+            }
+        }
+    ],
+    "dataformCoreVersion": "3.0.0",
+    "targets": [
+        {
+            "schema": "fixture_assertions",
+            "name": "assert_mart_kpis_positive",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "legacy",
+            "name": "events",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "raw",
+            "name": "customers",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "raw",
+            "name": "events",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "staging",
+            "name": "stg_customers",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "staging",
+            "name": "stg_events",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "intermediate",
+            "name": "int_sessions",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "intermediate",
+            "name": "ops_merge_snapshot",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "marts",
+            "name": "mart_kpis",
+            "database": "fixture-project"
+        },
+        {
+            "schema": "marts",
+            "name": "mart_ops",
+            "database": "fixture-project"
+        }
+    ]
+}
+

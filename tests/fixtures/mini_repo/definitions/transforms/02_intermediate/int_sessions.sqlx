@@ -1,0 +1,17 @@
+config {
+  type: "incremental",
+  schema: "intermediate",
+  uniqueKey: ["session_id"],
+  description: "Sessionized events with unnested item quantities"
+}
+
+SELECT
+  e.session_id,
+  ANY_VALUE(e.customer_id) AS customer_id,
+  MIN(e.event_ts) AS session_start,
+  SUM(e.amount) AS amount,
+  SUM(item.qty) AS item_qty
+FROM ${ref("stg_events")} AS e, UNNEST(e.items) AS item
+WHERE TRUE
+${when(incremental(), `AND e.event_ts > (SELECT MAX(session_start) FROM ${self()})`)}
+GROUP BY e.session_id

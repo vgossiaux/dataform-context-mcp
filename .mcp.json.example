@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "dataform-context": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--project", "/absolute/path/to/dataform-context-mcp",
+               "dataform-context", "serve", "--repo", "/absolute/path/to/your/dataform/project"]
+    }
+  }
+}

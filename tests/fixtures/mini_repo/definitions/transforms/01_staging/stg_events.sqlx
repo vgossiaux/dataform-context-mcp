@@ -1,0 +1,19 @@
+config {
+  type: "view",
+  schema: "staging",
+  tags: ["staging"],
+  columns: {
+    event_id: "Unique event identifier",
+    amount: "Transaction amount in EUR"
+  }
+}
+
+SELECT
+  event_id,
+  customer_id,
+  session_id,
+  ${utils.normalize("event_name")} AS event_name,
+  amount,
+  event_ts,
+  items
+FROM ${ref("raw", "events")}

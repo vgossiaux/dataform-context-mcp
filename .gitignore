@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.db
+node_modules/
+.dataform/
+spike-output/
+local/
+.DS_Store
+.mcp.json

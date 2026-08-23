@@ -1,0 +1,5 @@
+defaultProject: fixture-project
+defaultLocation: EU
+defaultDataset: fixture_dataset
+defaultAssertionDataset: fixture_assertions
+dataformCoreVersion: 3.0.0
