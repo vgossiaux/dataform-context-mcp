@@ -1,26 +1,80 @@
-# dataform-context-mcp
+<p align="center">
+  <h1 align="center">dataform-context-mcp</h1>
+</p>
 
-**Donnez à votre agent de code (Claude Code, bientôt Cursor) une connaissance fiable et
-à jour de votre pipeline Dataform — lineage, schémas, analyse d'impact — au lieu de le
-laisser relire les `.sqlx` un par un et halluciner sur le DAG.**
+<p align="center">
+  <strong>Langue :</strong>
+  <a href="README.md">Français</a> |
+  <a href="README.en.md">English</a>
+</p>
 
-MCP server Python **déterministe et self-hosted** : aucun LLM, aucun appel réseau, aucun
-accès BigQuery à l'exécution. Tout est construit localement depuis `dataform compile`.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white" alt="Python 3.12+" />
+  <img src="https://img.shields.io/badge/MCP-stdio-6E56CF" alt="MCP stdio" />
+  <img src="https://img.shields.io/badge/Dataform-3.x-4285F4?logo=googlecloud&logoColor=white" alt="Dataform 3.x" />
+  <img src="https://img.shields.io/badge/runtime-z%C3%A9ro%20r%C3%A9seau%20%C2%B7%20z%C3%A9ro%20LLM-2EA44F" alt="Zéro réseau, zéro LLM" />
+</p>
+
+<p align="center">
+  <strong>Donnez à votre agent de code (Claude Code, Cursor) une connaissance fiable et à jour
+  de votre pipeline Dataform — lineage table et colonne, schémas, analyse d'impact —
+  au lieu de le laisser relire les <code>.sqlx</code> un par un et halluciner sur le DAG.</strong>
+</p>
 
 ---
 
-## Le problème que ça résout
+## Installation avec Claude Code
+
+Prérequis (une fois par poste) : [uv](https://docs.astral.sh/uv/) (`brew install uv`) et
+`@dataform/cli` ≥ 3.0 (`npm i -g @dataform/cli`).
+
+À la racine de **votre repo Dataform**, créez ou complétez `.mcp.json`
+(modèle : [`.mcp.json.example`](.mcp.json.example)) :
+
+```json
+{
+  "mcpServers": {
+    "dataform-context": {
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp",
+               "dataform-context", "serve"]
+    }
+  }
+}
+```
+
+C'est tout : pas de clone, pas de `--repo` (le serveur indexe le répertoire courant).
+Ouvrez une session Claude Code dans le repo et tapez `/mcp` : `dataform-context` doit
+apparaître connecté. Premier appel ~15 s (compilation initiale), ensuite ~10 ms.
+
+> [!IMPORTANT]
+> **Chemin absolu de `uvx` obligatoire** : un `"command": "uvx"` nu échoue (`ENOENT`)
+> quand l'agent est lancé depuis un shell non-login dont le PATH ne contient pas
+> `/opt/homebrew/bin`. Même précaution en CI.
+
+Recommandé : ajoutez au `CLAUDE.md` du repo le bloc d'instructions agent (voir
+[Faire adopter les outils par l'agent](#faire-adopter-les-outils-par-lagent)).
+
+---
+
+## Pourquoi
 
 Un agent de code qui travaille sur un repo Dataform lit les fichiers `.sqlx` un par un.
-Conséquences observées en conditions réelles : colonnes ou tables inventées, dépendances amont
-oubliées lors d'un refactor, impact aval sous-estimé (la cascade `staging →
-intermediate → marts → assertions` n'est jamais vue en entier).
+Conséquences observées en conditions réelles : colonnes ou tables inventées, dépendances
+amont oubliées lors d'un refactor, impact aval sous-estimé — la cascade
+`staging → intermediate → marts → assertions` n'est jamais vue en entier.
 
-`dataform-context-mcp` compile le projet (source de vérité : le compilateur Dataform
-lui-même), indexe le graphe dans un SQLite local, extrait le lineage **colonne par
-colonne** avec [sqlglot](https://github.com/tobymao/sqlglot), et expose le tout à
-l'agent via 7 outils [MCP](https://modelcontextprotocol.io) typés. L'agent interroge au
-lieu de deviner.
+| Sans système | Avec dataform-context-mcp |
+|---|---|
+| L'agent grep les `ref()` et devine le DAG | Le DAG vient du compilateur Dataform lui-même (`dependencyTargets`) |
+| « Quelles tables ça casse ? » = relecture partielle | `impact_analysis` : blast radius complet, assertions incluses, en un appel |
+| L'origine d'une colonne se perd dans les CTEs | `get_column_lineage` : chaîne complète avec les expressions SQL de transformation |
+| Un lineage introuvable passe pour « pas de dépendance » | Statuts explicites + `complete: false` + `warnings` — **jamais de faux vide** |
+| Contexte figé au moment de la lecture | Ré-indexation lazy par hash de contenu à chaque appel |
+
+**Déterministe et self-hosted** : aucun LLM, aucun appel réseau, aucun accès au warehouse
+à l'exécution. Mêmes fichiers → même index → mêmes réponses.
 
 ```
 .sqlx + includes/ ──▶ dataform compile --json ──▶ parsing du CompiledGraph
@@ -31,62 +85,31 @@ lieu de deviner.
         • edges colonne-level (sqlglot, statuts explicites)
                                                         │
         Serveur MCP stdio (7 outils) ◀──────────────────┘
-        ré-indexation lazy par hash de contenu à chaque appel
 ```
 
-## Prérequis
+## Les 7 outils
 
-| Outil | Pourquoi | Installation |
-|---|---|---|
-| [uv](https://docs.astral.sh/uv/) | Gère Python et les dépendances (rien d'autre à installer côté Python) | `brew install uv` |
-| Node.js + `@dataform/cli` ≥ 3.0 | `dataform compile` est la source de vérité du graphe | `npm i -g @dataform/cli` |
+| Outil | Exemple de question à poser à l'agent |
+|---|---|
+| `get_table_context(name)` | « Décris-moi la table ref_brand » |
+| `get_upstream(name, depth)` | « De quoi dépend mart_kpis ? » |
+| `get_downstream(name, depth)` | « Qui lit staging_events ? » |
+| `find_tables_by_layer(layer)` | « Liste les tables du mart » |
+| `get_column_lineage(table, column, …)` | « D'où vient la colonne total_amount ? » |
+| `impact_analysis(name, column?)` | « Qu'est-ce qui casse si je renomme page_type ? » |
+| `refresh_index()` | « Force la ré-indexation » |
 
-Vérifiez : `uv --version` et `dataform --version` répondent.
+- **Résolution de noms tolérante** : `ma_table`, `dataset.ma_table`, canonical complet ou
+  chemin du fichier `.sqlx` — avec suggestions en cas d'erreur.
+- **Couches découvertes dynamiquement** depuis les chemins
+  (`definitions/transforms/<NN_nom>/`, `definitions/sources/`…) — aucune convention
+  hardcodée.
+- **Toute réponse embarque `index_meta`** : fraîcheur, hash source, comptages, statut de
+  la dernière compilation.
 
-## Installation (état actuel : clone local)
+## Faire adopter les outils par l'agent
 
-```bash
-git clone <ce-repo> dataform-graph-context
-cd dataform-graph-context
-uv sync            # crée .venv et installe les deps pinnées (uv.lock)
-uv run pytest      # 73 tests, ~6 s — tout doit être vert
-```
-
-> **Roadmap** : après publication sur une forge Git, l'installation deviendra
-> `uvx --from git+<url> dataform-context serve` — zéro clone (voir [Roadmap](#roadmap)).
-
-## Brancher à Claude Code
-
-À la racine de **votre repo Dataform** (pas de ce repo), créez ou complétez `.mcp.json`
-(modèle : [`.mcp.json.example`](.mcp.json.example)) :
-
-```json
-{
-  "mcpServers": {
-    "dataform-context": {
-      "type": "stdio",
-      "command": "/opt/homebrew/bin/uv",
-      "args": ["run", "--project", "/chemin/absolu/vers/dataform-context-mcp",
-               "dataform-context", "serve"]
-    }
-  }
-}
-```
-
-Pas de `--repo` à préciser : le serveur indexe par défaut le répertoire courant, et les
-clients MCP (Claude Code, Cursor) lancent les serveurs de projet depuis la racine du
-projet. Un repo différent peut toujours être visé explicitement avec
-`"serve", "--repo", "/chemin/du/repo"`.
-
-Puis ouvrez une session Claude Code dans le repo Dataform et tapez `/mcp` : le serveur
-`dataform-context` doit apparaître connecté.
-
-> ⚠️ **Chemin absolu de `uv` obligatoire** : un `"command": "uv"` nu échoue
-> (`ENOENT`) quand Claude Code est lancé depuis un shell non-login dont le PATH ne
-> contient pas `/opt/homebrew/bin` (constaté en test). Idem en CI.
-
-Recommandé : ajoutez ce bloc au `CLAUDE.md` du repo Dataform pour que les agents
-utilisent les outils spontanément :
+Bloc à ajouter au `CLAUDE.md` (ou aux règles Cursor) du repo Dataform :
 
 > ## Contexte pipeline : MCP dataform-context
 > Avant de lire des `.sqlx` ou de modifier une table : `get_table_context` (schéma +
@@ -97,69 +120,38 @@ utilisent les outils spontanément :
 > des fichiers. `complete: false` = lineage inconnu, pas « aucune dépendance ». Après
 > édition de `.sqlx`, l'index se rafraîchit seul (hash de contenu).
 
-## Les 7 outils MCP
-
-| Outil | Ce que l'agent obtient | Exemple de question à poser à l'agent |
-|---|---|---|
-| `get_table_context(name)` | Schéma, couche, description, colonnes documentées, voisins directs | « Décris-moi la table ref_brand » |
-| `get_upstream(name, depth)` | Dépendances amont par niveau (1–10) | « De quoi dépend mart_kpis ? » |
-| `get_downstream(name, depth)` | Dépendants aval par niveau | « Qui lit staging_events ? » |
-| `find_tables_by_layer(layer)` | Actions d'une couche (`01_staging`, suffixe `marts`…) | « Liste les tables du mart » |
-| `get_column_lineage(table, column, direction, depth)` | Chaîne de transformation d'une colonne, expressions SQL incluses | « D'où vient la colonne total_amount ? » |
-| `impact_analysis(name, column?)` | Blast radius complet : tables par couche, assertions, colonnes affectées | « Qu'est-ce qui casse si je renomme page_type ? » |
-| `refresh_index()` | Rebuild forcé de l'index | « Force la ré-indexation » |
-
-Détails utiles :
-
-- **Résolution de noms tolérante** : `ma_table`, `dataset.ma_table`, canonical complet
-  `projet.dataset.ma_table` ou chemin du fichier `.sqlx`. En cas d'erreur, la réponse
-  contient des suggestions (`did you mean`).
-- **Couches découvertes dynamiquement** depuis les chemins
-  (`definitions/transforms/<NN_nom>/`, `definitions/sources/`…) — aucune convention
-  hardcodée, fonctionne sur des repos aux couches différentes.
-- **Toute réponse embarque `index_meta`** : fraîcheur de l'index, hash source, comptages,
-  statut de la dernière compilation.
-
 ## Lire les réponses de lineage colonne — le contrat « jamais de faux vide »
 
 L'extraction statique a des limites connues (MERGE, `SELECT *` sur une source non
 documentée, scripts multi-statements). La règle absolue : **un lineage vide n'est
-présenté comme « aucune dépendance » que s'il est certain.** Sinon, c'est dit.
+présenté comme « aucune dépendance » que s'il est certain.** Sinon, c'est dit :
 
-- Chaque table porte un **statut d'extraction** : `ok`, `partial`, `failed`,
-  `not_attempted`, `source` (tables sources déclarées) — visible dans
-  `get_table_context` et le `report` CLI, toujours accompagné d'une raison.
-- `get_column_lineage` renvoie `complete: false` + `warnings` (la liste des tables
-  opaques rencontrées) quand le lineage est **inconnu au-delà d'un point** — à ne pas
-  confondre avec `complete: true` + `edges: []` (vraie absence, ex. `CURRENT_DATE()`).
-- `impact_analysis(column=...)` renvoie `possibly_affected` : les tables aval dont
-  l'impact colonne est inconnu. **Ne jamais les exclure d'un refactor.**
+- Chaque table porte un **statut d'extraction** (`ok`, `partial`, `failed`,
+  `not_attempted`, `source`), toujours accompagné d'une raison.
+- `get_column_lineage` renvoie `complete: false` + `warnings` (tables opaques
+  rencontrées) quand le lineage est inconnu au-delà d'un point — à distinguer de
+  `complete: true` + `edges: []` (vraie absence, ex. `CURRENT_DATE()`).
+- `impact_analysis(column=…)` renvoie `possibly_affected` : tables aval dont l'impact
+  colonne est inconnu. **Ne jamais les exclure d'un refactor.**
 
-Le détail des catégories non couvertes et leur surfaçage :
-[`docs/lineage-limits.md`](docs/lineage-limits.md).
+Détail des catégories et du surfaçage : [`docs/lineage-limits.md`](docs/lineage-limits.md).
 
-## Fraîcheur de l'index
+<details>
+<summary><strong>CLI (sans agent)</strong></summary>
 
-- À **chaque** appel d'outil, le serveur hache le contenu de `definitions/**`,
-  `includes/**` et `workflow_settings.yaml`. Hash inchangé → réponse en ~10 ms.
-  Hash changé → recompilation + ré-indexation (~2–15 s selon la taille du repo), puis
-  réponse. L'agent travaille donc toujours sur l'état courant des fichiers, y compris
-  ses propres éditions en cours de session.
-- Si la compilation échoue (fichier cassé en cours d'édition), le **dernier index
-  valide** est servi, avec `index_meta.compile_status: "error"` et le message d'erreur.
-  Jamais d'index vide.
-- L'index vit dans `~/.cache/dataform-context-mcp/<hash-du-chemin>.db` — rien n'est
-  écrit dans le repo Dataform.
-
-## CLI (sans agent)
+Depuis un clone local du repo (`uv sync` d'abord), ou via
+`uvx --from git+ssh://git@github.com/vgossiaux/dataform-context-mcp dataform-context …` :
 
 ```bash
-uv run dataform-context index  --repo /chemin/repo     # compile + (re)construit l'index
-uv run dataform-context report --repo /chemin/repo     # résumé : couches, edges, couverture lineage
-uv run dataform-context report --repo ... --table ma_table   # contexte JSON d'une table
-uv run dataform-context serve  --repo /chemin/repo     # serveur MCP (stdio) — utilisé par .mcp.json
-uv run dataform-context validate-golden --repo ... --golden goldens.json   # oracle manuel
+dataform-context index            # compile + (re)construit l'index du repo courant
+dataform-context report           # résumé : couches, edges, couverture lineage
+dataform-context report --table ma_table    # contexte JSON d'une table
+dataform-context serve            # serveur MCP (stdio) — utilisé par .mcp.json
+dataform-context validate-golden --golden goldens.json   # oracle manuel
 ```
+
+`--repo /chemin` sur chaque commande pour viser un autre repo que le courant.
+`--db /chemin` pour déplacer l'index (défaut : `~/.cache/dataform-context-mcp/<hash>.db`).
 
 Exemple de sortie `report` :
 
@@ -174,8 +166,24 @@ column extraction:
   ok: 29  partial: 13  failed: 4  source: 20
   pct_ok (hors source): 63%
 ```
+</details>
 
-## Golden sets : valider le lineage colonne sur votre repo
+<details>
+<summary><strong>Fraîcheur de l'index (ré-indexation lazy)</strong></summary>
+
+- À **chaque** appel d'outil, le serveur hache le contenu de `definitions/**`,
+  `includes/**` et `workflow_settings.yaml`. Hash inchangé → réponse ~10 ms. Hash
+  changé → recompilation + ré-indexation (~2–15 s), puis réponse. L'agent travaille
+  toujours sur l'état courant des fichiers, y compris ses propres éditions en cours de
+  session.
+- Si la compilation échoue (fichier cassé en cours d'édition), le **dernier index
+  valide** est servi, avec `index_meta.compile_status: "error"` et le message. Jamais
+  d'index vide.
+- L'index vit hors du repo (`~/.cache/dataform-context-mcp/`) — rien à gitignorer.
+</details>
+
+<details>
+<summary><strong>Golden sets : valider le lineage sur votre repo</strong></summary>
 
 Sans base de vérité externe, l'oracle est humain : vous tracez à la main quelques
 colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Format
@@ -197,37 +205,41 @@ colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Forma
 `validate-golden` affiche PASS/FAIL par entrée avec le diff (edges manquants / en trop)
 et sort en code 1 au moindre écart — utilisable en CI. Conseil : couvrez 1 passthrough,
 1 agrégation, 1 chaîne de 3+ tables, 1 table incrémentale, 1 cas tordu (UNNEST/macro).
+</details>
 
-## Gouvernance & audit
+<details>
+<summary><strong>Gouvernance & audit</strong></summary>
 
 Conçu pour passer une revue sécurité d'entreprise avant déploiement sur un repo client :
 
-- **Dépendances runtime exhaustives** : `mcp` (SDK officiel Model Context Protocol,
-  2.0.0) et `sqlglot` (30.17.0) — pins exacts dans `uv.lock` ; tout le reste est stdlib
-  (`sqlite3`, `argparse`, `hashlib`, `difflib`).
+- **Dépendances runtime exhaustives** : `mcp` (SDK officiel Model Context Protocol) et
+  `sqlglot` — pins exacts dans `uv.lock` ; tout le reste est stdlib (`sqlite3`,
+  `argparse`, `hashlib`, `difflib`).
 - **Zéro appel réseau à l'exécution** : lecture des fichiers du repo + shell-out
-  `dataform compile --json` local. Pas d'accès BigQuery, pas de télémétrie.
+  `dataform compile --json` local. Pas d'accès au warehouse, pas de télémétrie.
 - **Zéro LLM à l'exécution** : parsing déterministe (compilateur Dataform + sqlglot).
-  Mêmes fichiers → même index → mêmes réponses.
 - **Données locales uniquement** : index SQLite dans `~/.cache/dataform-context-mcp/`.
 - **Ce repo ne contient aucune métadonnée client** : fixtures synthétiques, rapports
-  agrégés, goldens locaux gitignorés (`local/`).
+  agrégés uniquement.
+</details>
 
-## Limites connues
+<details>
+<summary><strong>Limites connues</strong></summary>
 
 - Lineage colonne incomplet par construction sur : `SELECT *` au-dessus d'une source
   sans schéma documenté, MERGE/DML, scripts multi-statements — toujours **surfacé**
   (statuts, `warnings`, `possibly_affected`), jamais masqué. Levier : documenter les
-  `columns` des declarations dans les `config {}` débloque mécaniquement l'expansion
-  des `SELECT *` (mesuré : +28 points de couverture possibles sur un des deux repos
-  pilotes).
+  `columns` des declarations dans leur `config {}` débloque mécaniquement l'expansion
+  des `SELECT *` (mesuré : +28 points de couverture sur un repo pilote).
+- Couverture observée sur deux repos pilotes : 91 % et 63 % de tables `ok` — l'écart du
+  second est structurel (staging en `SELECT *` sur sources non documentées), analysé
+  dans [`docs/lineage-limits.md`](docs/lineage-limits.md).
 - `dataform compile` (Node) est une dépendance d'exécution : absente → l'indexation
-  échoue proprement (`CompileError`), l'index précédent reste servi.
-- Couverture mesurée sur les 2 repos pilotes (2026-08-23) : 91 % et 63 % de tables
-  `ok` — l'écart du second est structurel (staging en `SELECT *` sur sources non
-  documentées), analysé dans [`docs/lineage-limits.md`](docs/lineage-limits.md).
+  échoue proprement, l'index précédent reste servi.
+</details>
 
-## Architecture du code
+<details>
+<summary><strong>Architecture du code & tests</strong></summary>
 
 ```
 src/dataform_context_mcp/
@@ -242,34 +254,37 @@ src/dataform_context_mcp/
 └── cli.py         # index | report | serve | validate-golden
 ```
 
-Tests : `tests/` (73), dont un **mini repo Dataform synthétique compilable**
-(`tests/fixtures/mini_repo/`) qui sert de vérité de bout en bout — aucun test ne touche
-un repo client. `uv run pytest -m "not integration"` tourne sans Node.
+Développement local :
 
-## Roadmap
+```bash
+git clone git@github.com:vgossiaux/dataform-context-mcp.git
+cd dataform-context-mcp
+uv sync && uv run pytest        # 74 tests
+```
 
-**Phase produit (T12 — planifiée, voir `docs/superpowers/plans/`)** :
+Les tests s'appuient sur un **mini repo Dataform synthétique compilable**
+(`tests/fixtures/mini_repo/`) — aucun test ne touche un repo réel.
+`uv run pytest -m "not integration"` tourne sans Node.
+</details>
 
-- Publication sur une **forge Git** → installation sans clone :
-  `uvx --from git+<url> dataform-context serve`.
-- Support **Cursor** documenté (`.cursor/mcp.json` — même serveur, MCP stdio standard).
-- Outil MCP **`check_setup()`** : l'agent diagnostique lui-même l'installation
-  (dataform présent, compile OK, couverture, goldens) — les vérifications se font
-  dans la CLI de l'agent, sans quitter la session.
-- Commande projet `/dataform-context:verify` (Claude Code) + règle `.cursor/rules`.
-- `--repo` par défaut = répertoire courant ; CI (pytest + ruff) ; licence.
-
-**Itération 2 (hors scope MVP)** : enrichissement sémantique **batch, hors session, via
-LLM self-hosted** des colonnes non documentées (~50 % du graphe mesuré) — jamais au
-runtime MCP ; documentation des schémas des declarations sources ; export mermaid/graphviz ;
-hook PreToolUse suggérant `impact_analysis` avant édition de `.sqlx`.
-
-## Dépannage express
+<details>
+<summary><strong>Dépannage express</strong></summary>
 
 | Symptôme | Cause | Fix |
 |---|---|---|
-| `/mcp` : serveur en erreur `ENOENT ... uv` | PATH sans homebrew (shell non-login) | Chemin absolu `/opt/homebrew/bin/uv` dans `.mcp.json` |
+| `/mcp` : serveur en erreur `ENOENT ... uv` | PATH sans homebrew (shell non-login) | Chemin absolu `/opt/homebrew/bin/uvx` dans `.mcp.json` |
 | `compile error` dans `index_meta` | Un `.sqlx` ne compile pas | `dataform compile` dans le repo pour voir l'erreur ; l'index précédent reste servi |
 | `not_found` avec suggestions | Nom de table approximatif | Reprendre une suggestion, ou `dataset.table` |
-| Réponses qui semblent périmées | (ne devrait pas arriver — hash par appel) | `refresh_index()` puis vérifier `index_meta.source_hash` |
-| Premier appel lent (~15 s) | Compilation + extraction initiales | Normal ; les appels suivants ~10 ms |
+| Premier appel lent (~15 s) | Compilation + extraction initiales | Normal ; appels suivants ~10 ms |
+</details>
+
+## Roadmap
+
+- Support **Cursor** documenté (`.cursor/mcp.json` — même serveur, MCP stdio standard).
+- Outil MCP **`check_setup()`** : l'agent diagnostique lui-même l'installation
+  (dataform présent, compile OK, couverture, goldens) sans quitter la session.
+- Commande projet `/dataform-context:verify` (Claude Code) + règle `.cursor/rules`.
+- CI (pytest + ruff) ; licence.
+- Enrichissement sémantique **batch, hors session, via LLM self-hosted** des colonnes
+  non documentées — jamais au runtime MCP ; export mermaid/graphviz ; hook PreToolUse
+  suggérant `impact_analysis` avant édition de `.sqlx`.
