@@ -53,8 +53,23 @@ apparaître connecté. Premier appel ~15 s (compilation initiale), ensuite ~10 m
 > quand l'agent est lancé depuis un shell non-login dont le PATH ne contient pas
 > `/opt/homebrew/bin`. Même précaution en CI.
 
+**Vérification depuis l'agent** : demandez simplement « lance check_setup » — l'outil
+diagnostique toute l'installation (dataform CLI, compilation, index, couverture lineage,
+goldens). Ou copiez la commande
+[`integrations/claude-code/commands/dataform-context-verify.md`](integrations/claude-code/commands/dataform-context-verify.md)
+dans `.claude/commands/` de votre repo pour avoir `/dataform-context-verify`.
+
 Recommandé : ajoutez au `CLAUDE.md` du repo le bloc d'instructions agent (voir
 [Faire adopter les outils par l'agent](#faire-adopter-les-outils-par-lagent)).
+
+## Installation avec Cursor
+
+Même serveur, MCP stdio standard. Copiez
+[`integrations/cursor/mcp.json.example`](integrations/cursor/mcp.json.example) vers
+`.cursor/mcp.json` de votre repo, et la règle
+[`integrations/cursor/rules/dataform-context.mdc`](integrations/cursor/rules/dataform-context.mdc)
+vers `.cursor/rules/`. Tout le matériel d'intégration est récapitulé dans
+[`integrations/README.md`](integrations/README.md).
 
 ---
 
@@ -87,7 +102,7 @@ amont oubliées lors d'un refactor, impact aval sous-estimé — la cascade
         Serveur MCP stdio (7 outils) ◀──────────────────┘
 ```
 
-## Les 7 outils
+## Les 8 outils
 
 | Outil | Exemple de question à poser à l'agent |
 |---|---|
@@ -97,6 +112,7 @@ amont oubliées lors d'un refactor, impact aval sous-estimé — la cascade
 | `find_tables_by_layer(layer)` | « Liste les tables du mart » |
 | `get_column_lineage(table, column, …)` | « D'où vient la colonne total_amount ? » |
 | `impact_analysis(name, column?)` | « Qu'est-ce qui casse si je renomme page_type ? » |
+| `check_setup()` | « Vérifie que dataform-context est bien installé » |
 | `refresh_index()` | « Force la ré-indexation » |
 
 - **Résolution de noms tolérante** : `ma_table`, `dataset.ma_table`, canonical complet ou
@@ -280,11 +296,8 @@ Les tests s'appuient sur un **mini repo Dataform synthétique compilable**
 
 ## Roadmap
 
-- Support **Cursor** documenté (`.cursor/mcp.json` — même serveur, MCP stdio standard).
-- Outil MCP **`check_setup()`** : l'agent diagnostique lui-même l'installation
-  (dataform présent, compile OK, couverture, goldens) sans quitter la session.
-- Commande projet `/dataform-context:verify` (Claude Code) + règle `.cursor/rules`.
-- CI (pytest + ruff) ; licence.
+- Licence (préalable au passage open source).
 - Enrichissement sémantique **batch, hors session, via LLM self-hosted** des colonnes
-  non documentées — jamais au runtime MCP ; export mermaid/graphviz ; hook PreToolUse
-  suggérant `impact_analysis` avant édition de `.sqlx`.
+  non documentées — jamais au runtime MCP.
+- Export mermaid/graphviz du graphe ; hook PreToolUse suggérant `impact_analysis`
+  avant édition de `.sqlx`.

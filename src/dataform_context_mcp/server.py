@@ -7,7 +7,10 @@ response embeds index_meta, and domain errors come back as structured
 
 from __future__ import annotations
 
+import json
+import shutil
 import sqlite3
+import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,6 +18,7 @@ from mcp.server import MCPServer
 
 from . import db as store
 from .db import AmbiguousError, NotFoundError
+from .golden import validate_entries
 from .indexer import ensure_fresh
 
 _MAX_DEPTH = 10
@@ -245,6 +249,90 @@ def create_server(
             return payload
         finally:
             conn.close()
+
+    @mcp.tool()
+    def check_setup() -> dict[str, Any]:
+        """End-to-end diagnostic of this installation: dataform CLI, compilation,
+        index, column-lineage coverage and golden validation. Call it right after
+        installing, or whenever the tools behave unexpectedly."""
+        checks: list[dict[str, Any]] = []
+        dataform_path = shutil.which("dataform")
+        version = None
+        if dataform_path:
+            try:
+                proc = subprocess.run(
+                    ["dataform", "--version"], capture_output=True, text=True, timeout=30
+                )
+                version = proc.stdout.strip() or None
+            except Exception:
+                pass
+        checks.append(
+            {
+                "name": "dataform_cli",
+                "ok": dataform_path is not None,
+                "detail": version or ("not found on PATH" if not dataform_path else dataform_path),
+            }
+        )
+        conn, index_meta = fresh()
+        try:
+            checks.append(
+                {
+                    "name": "compile",
+                    "ok": index_meta["compile_status"] == "ok",
+                    "detail": index_meta["compile_error"]
+                    or f"ok — dataform core {index_meta.get('dataform_version') or '?'}",
+                }
+            )
+            counts = index_meta["counts"]
+            checks.append(
+                {
+                    "name": "index",
+                    "ok": counts["actions"] > 0,
+                    "detail": (
+                        f"actions={counts['actions']}, table_edges={counts['table_edges']}, "
+                        f"column_edges={counts['column_edges']}, "
+                        f"layers={len(index_meta['available_layers'])}"
+                    ),
+                }
+            )
+            extraction = index_meta.get("column_extraction", {})
+            analyzable = sum(count for status, count in extraction.items() if status != "source")
+            pct_ok = round(100 * extraction.get("ok", 0) / analyzable) if analyzable else 0
+            checks.append(
+                {
+                    "name": "column_lineage",
+                    "ok": analyzable > 0,
+                    "detail": f"{extraction} — pct_ok={pct_ok}% (excluding sources)",
+                }
+            )
+            golden_path = repo / ".dataform-context" / "golden_columns.json"
+            if golden_path.exists():
+                summary = validate_entries(conn, json.loads(golden_path.read_text()))
+                failures = [r["label"] for r in summary["results"] if not r["ok"]]
+                checks.append(
+                    {
+                        "name": "goldens",
+                        "ok": summary["passed"] == summary["total"],
+                        "detail": f"{summary['passed']}/{summary['total']} passed"
+                        + (f" — failing: {failures[:5]}" if failures else ""),
+                    }
+                )
+            else:
+                checks.append(
+                    {
+                        "name": "goldens",
+                        "ok": True,
+                        "detail": "no golden file (optional) — .dataform-context/golden_columns.json",
+                    }
+                )
+        finally:
+            conn.close()
+        return {
+            "repo": str(repo.resolve()),
+            "ok": all(check["ok"] for check in checks),
+            "checks": checks,
+            "index_meta": index_meta,
+        }
 
     @mcp.tool()
     def refresh_index() -> dict[str, Any]:

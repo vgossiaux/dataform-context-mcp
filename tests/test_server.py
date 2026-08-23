@@ -1,6 +1,7 @@
 """MCP server tests — in-process client against the fixture graph."""
 
 import copy
+import json
 import shutil
 
 import pytest
@@ -18,6 +19,7 @@ EXPECTED_TOOLS = {
     "find_tables_by_layer",
     "get_column_lineage",
     "impact_analysis",
+    "check_setup",
     "refresh_index",
 }
 
@@ -223,6 +225,56 @@ async def test_impact_analysis_column_level(server):
         assert CANON["ops"] in impact["possibly_affected"]
         assert CANON["mart_ops"] in impact["possibly_affected"]  # downstream of opaque node
         assert CANON["mart_kpis"] not in impact["possibly_affected"]
+
+
+async def test_check_setup_without_goldens(server):
+    async with Client(server) as client:
+        result = await call(client, "check_setup")
+        assert [c["name"] for c in result["checks"]] == [
+            "dataform_cli",
+            "compile",
+            "index",
+            "column_lineage",
+            "goldens",
+        ]
+        by_name = {c["name"]: c for c in result["checks"]}
+        assert by_name["compile"]["ok"] is True
+        assert by_name["index"]["ok"] is True
+        assert "actions=10" in by_name["index"]["detail"]
+        assert by_name["column_lineage"]["ok"] is True
+        assert by_name["goldens"]["ok"] is True
+        assert "optional" in by_name["goldens"]["detail"]
+
+
+async def test_check_setup_runs_goldens(server, repo_copy):
+    golden_dir = repo_copy / ".dataform-context"
+    golden_dir.mkdir()
+    (golden_dir / "golden_columns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table": "marts.mart_kpis",
+                    "column": "snapshot_date",
+                    "expected_edges": [],
+                    "expect_complete": True,
+                },
+                {
+                    "table": "marts.mart_kpis",
+                    "column": "total_amount",
+                    "depth": 1,
+                    "expected_edges": [
+                        "staging.stg_customers.oops -> marts.mart_kpis.total_amount"
+                    ],
+                },
+            ]
+        )
+    )
+    async with Client(server) as client:
+        result = await call(client, "check_setup")
+        goldens = next(c for c in result["checks"] if c["name"] == "goldens")
+        assert goldens["ok"] is False
+        assert "1/2 passed" in goldens["detail"]
+        assert result["ok"] is False
 
 
 @requires_dataform

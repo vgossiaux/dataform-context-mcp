@@ -53,8 +53,22 @@ connected. First call takes ~15 s (initial compilation), then ~10 ms.
 > when the agent is launched from a non-login shell whose PATH lacks
 > `/opt/homebrew/bin`. Same caution applies in CI.
 
+**Verify from the agent**: just ask "run check_setup" — the tool diagnoses the whole
+installation (dataform CLI, compilation, index, lineage coverage, goldens). Or copy
+[`integrations/claude-code/commands/dataform-context-verify.md`](integrations/claude-code/commands/dataform-context-verify.md)
+into your repo's `.claude/commands/` to get `/dataform-context-verify`.
+
 Recommended: add the agent-instruction block to the repo's `CLAUDE.md` (see
 [Getting the agent to adopt the tools](#getting-the-agent-to-adopt-the-tools)).
+
+## Install with Cursor
+
+Same server, standard MCP stdio. Copy
+[`integrations/cursor/mcp.json.example`](integrations/cursor/mcp.json.example) to your
+repo's `.cursor/mcp.json`, and the rule
+[`integrations/cursor/rules/dataform-context.mdc`](integrations/cursor/rules/dataform-context.mdc)
+to `.cursor/rules/`. All integration material is summarized in
+[`integrations/README.md`](integrations/README.md) (French).
 
 ---
 
@@ -87,7 +101,7 @@ runtime. Same files → same index → same answers.
         MCP stdio server (7 tools) ◀────────────────────┘
 ```
 
-## The 7 tools
+## The 8 tools
 
 | Tool | Example question to ask the agent |
 |---|---|
@@ -97,6 +111,7 @@ runtime. Same files → same index → same answers.
 | `find_tables_by_layer(layer)` | "List the mart tables" |
 | `get_column_lineage(table, column, …)` | "Where does the total_amount column come from?" |
 | `impact_analysis(name, column?)` | "What breaks if I rename page_type?" |
+| `check_setup()` | "Check that dataform-context is properly installed" |
 | `refresh_index()` | "Force a reindex" |
 
 - **Tolerant name resolution**: `my_table`, `dataset.my_table`, full canonical name or
@@ -266,11 +281,8 @@ Tests rely on a **synthetic, compilable mini Dataform repo**
 
 ## Roadmap
 
-- Documented **Cursor** support (`.cursor/mcp.json` — same server, standard MCP stdio).
-- **`check_setup()`** MCP tool: the agent diagnoses the installation itself (dataform
-  present, compile OK, coverage, goldens) without leaving the session.
-- `/dataform-context:verify` project command (Claude Code) + `.cursor/rules` rule.
-- CI (pytest + ruff); license.
+- License (prerequisite for going open source).
 - **Batch, offline, self-hosted LLM** semantic enrichment of undocumented columns —
-  never at MCP runtime; mermaid/graphviz export; PreToolUse hook suggesting
-  `impact_analysis` before `.sqlx` edits.
+  never at MCP runtime.
+- Mermaid/graphviz graph export; PreToolUse hook suggesting `impact_analysis` before
+  `.sqlx` edits.

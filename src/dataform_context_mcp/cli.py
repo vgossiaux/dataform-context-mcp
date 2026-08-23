@@ -12,16 +12,14 @@ from .compile import load_graph
 from .db import (
     AmbiguousError,
     NotFoundError,
-    column_lineage,
-    extraction_warnings,
     get_action,
     get_meta,
-    known_columns,
     open_db,
     rebuild,
     resolve,
     traverse,
 )
+from .golden import validate_entries
 from .indexer import default_db_path, ensure_fresh
 
 
@@ -184,53 +182,16 @@ def cmd_validate_golden(args: argparse.Namespace, parser: argparse.ArgumentParse
         return 2
     entries = json.loads(Path(golden_path).read_text())
     conn = open_db(db_path)
-    failures = 0
-    for entry in entries:
-        label = f"{entry['table']}.{entry['column']}"
-        try:
-            action_id = resolve(conn, entry["table"])
-            if entry["column"] not in known_columns(conn, action_id):
-                raise NotFoundError(f"unknown column '{entry['column']}'")
-            expected = set()
-            for spec in entry.get("expected_edges", []):
-                up_spec, down_spec = (side.strip() for side in spec.split("->"))
-                up_table, up_column = up_spec.rsplit(".", 1)
-                down_table, down_column = down_spec.rsplit(".", 1)
-                expected.add(
-                    (
-                        get_action(conn, resolve(conn, up_table))["canonical"],
-                        up_column,
-                        get_action(conn, resolve(conn, down_table))["canonical"],
-                        down_column,
-                    )
-                )
-        except (NotFoundError, AmbiguousError, ValueError) as err:
-            print(f"FAIL {label}: golden entry invalid — {err}")
-            failures += 1
-            continue
-        direction = entry.get("direction", "upstream")
-        result = column_lineage(conn, action_id, entry["column"], direction, entry.get("depth", 3))
-        actual = {
-            (e["from"]["table"], e["from"]["column"], e["to"]["table"], e["to"]["column"])
-            for e in result["edges"]
-        }
-        complete = not extraction_warnings(conn, result["visited_action_ids"], direction)
-        problems = []
-        missing = expected - actual
-        extra = actual - expected
-        if missing:
-            problems.append(f"missing: {sorted(missing)}")
-        if extra:
-            problems.append(f"extra: {sorted(extra)}")
-        if "expect_complete" in entry and complete != entry["expect_complete"]:
-            problems.append(f"complete={complete}, expected {entry['expect_complete']}")
-        if problems:
-            failures += 1
-            print(f"FAIL {label}: " + " | ".join(problems))
+    summary = validate_entries(conn, entries)
+    for result in summary["results"]:
+        if result["ok"]:
+            print(
+                f"PASS {result['label']} ({result['edges']} edges, complete={result['complete']})"
+            )
         else:
-            print(f"PASS {label} ({len(actual)} edges, complete={complete})")
-    print(f"{len(entries) - failures}/{len(entries)} golden entries passed")
-    return 1 if failures else 0
+            print(f"FAIL {result['label']}: " + " | ".join(result["problems"]))
+    print(f"{summary['passed']}/{summary['total']} golden entries passed")
+    return 0 if summary["passed"] == summary["total"] else 1
 
 
 def main(argv: list[str] | None = None) -> int:
