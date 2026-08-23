@@ -221,6 +221,12 @@ colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Forma
 `validate-golden` affiche PASS/FAIL par entrée avec le diff (edges manquants / en trop)
 et sort en code 1 au moindre écart — utilisable en CI. Conseil : couvrez 1 passthrough,
 1 agrégation, 1 chaîne de 3+ tables, 1 table incrémentale, 1 cas tordu (UNNEST/macro).
+
+**Construction guidée** : copiez la commande
+[`integrations/claude-code/commands/dataform-context-golden-init.md`](integrations/claude-code/commands/dataform-context-golden-init.md)
+dans `.claude/commands/` puis lancez `/dataform-context-golden-init` — l'agent propose
+des tracés (contre-vérifiés dans le SQL source), vous les validez via des questions
+interactives, le fichier est écrit et validé automatiquement.
 </details>
 
 <details>

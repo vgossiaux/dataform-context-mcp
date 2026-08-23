@@ -206,6 +206,12 @@ you know well, and the tool must find exactly those edges. Format
 `validate-golden` prints PASS/FAIL per entry with a readable diff (missing / extra
 edges) and exits 1 on any mismatch — CI-friendly. Tip: cover 1 passthrough,
 1 aggregation, 1 chain of 3+ tables, 1 incremental table, 1 tricky case (UNNEST/macro).
+
+**Guided construction**: copy the
+[`integrations/claude-code/commands/dataform-context-golden-init.md`](integrations/claude-code/commands/dataform-context-golden-init.md)
+command into `.claude/commands/` and run `/dataform-context-golden-init` — the agent
+proposes traces (cross-checked against the source SQL), you validate them through
+interactive questions, and the file is written and validated automatically.
 </details>
 
 <details>

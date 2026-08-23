@@ -7,6 +7,7 @@
 | `claude-code/mcp.json.example` | `.mcp.json` (fusionner si existant) | Déclare le serveur MCP |
 | `claude-code/CLAUDE.md.snippet.md` | bloc à coller dans `CLAUDE.md` | Fait adopter les outils par l'agent |
 | `claude-code/commands/dataform-context-verify.md` | `.claude/commands/` | Commande `/dataform-context-verify` (diagnostic) |
+| `claude-code/commands/dataform-context-golden-init.md` | `.claude/commands/` | Commande `/dataform-context-golden-init` (construction interactive du golden set, validation humaine) |
 
 ## Cursor
 
