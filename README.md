@@ -77,6 +77,60 @@ se copient dans `.cursor/commands/` pour obtenir `/dataform-context-verify` et
 les commandes personnalisées et, depuis la v1.5, l'elicitation MCP). Tout le matériel
 d'intégration est récapitulé dans [`integrations/README.md`](integrations/README.md).
 
+## Installation avec Codex CLI
+
+Prérequis : [uv](https://docs.astral.sh/uv/) et `@dataform/cli` ≥ 3.0.
+
+À la racine de votre repo, créez ou complétez `.codex/config.toml`
+(modèle : [`integrations/codex/config.toml.snippet`](integrations/codex/config.toml.snippet)) :
+
+```toml
+[mcp_servers.dataform-context]
+command = "/opt/homebrew/bin/uvx"
+args = ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp", "dataform-context", "serve"]
+```
+
+`.codex/config.toml` n'est chargé que pour un projet **"trusted"** : au premier
+lancement de `codex` dans le repo, répondez "yes" au prompt de confiance.
+
+Ajoutez le bloc [`integrations/codex/AGENTS.md.snippet.md`](integrations/codex/AGENTS.md.snippet.md)
+à votre `AGENTS.md`, puis copiez
+[`integrations/codex/skills/`](integrations/codex/skills/) dans `.codex/skills/` pour
+obtenir les skills `dataform-context-verify` et `dataform-context-golden-init`.
+
+## Installation avec Antigravity
+
+Copiez [`integrations/antigravity/mcp_config.json.example`](integrations/antigravity/mcp_config.json.example)
+vers `.agents/mcp_config.json`, la règle
+[`integrations/antigravity/rules/dataform-context.md`](integrations/antigravity/rules/dataform-context.md)
+vers `.agents/rules/`, et les workflows
+[`integrations/antigravity/workflows/`](integrations/antigravity/workflows/) vers
+`.agents/workflows/` pour obtenir `/dataform-context-verify` et
+`/dataform-context-golden-init`.
+
+## Installation avec Windsurf
+
+⚠️ Contrairement aux autres clients, la config MCP de Windsurf est **globale par
+poste**, pas scopée projet. Fusionnez
+[`integrations/windsurf/mcp_config.json.snippet`](integrations/windsurf/mcp_config.json.snippet)
+dans `~/.codeium/windsurf/mcp_config.json` (une fois par machine). Les rules et
+workflows, eux, restent scopés projet et se committent normalement : copiez
+[`integrations/windsurf/rules/dataform-context.md`](integrations/windsurf/rules/dataform-context.md)
+vers `.windsurf/rules/` et
+[`integrations/windsurf/workflows/`](integrations/windsurf/workflows/) vers
+`.windsurf/workflows/`.
+
+## Installation avec Copilot (VS Code)
+
+Copiez [`integrations/copilot/mcp.json.example`](integrations/copilot/mcp.json.example)
+vers `.vscode/mcp.json` (⚠️ pas `.mcp.json` à la racine — collision de schéma avec
+Claude Code/Cursor), le bloc
+[`integrations/copilot/copilot-instructions.snippet.md`](integrations/copilot/copilot-instructions.snippet.md)
+vers `.github/copilot-instructions.md`, et les prompt files
+[`integrations/copilot/prompts/`](integrations/copilot/prompts/) vers
+`.github/prompts/` pour obtenir `/dataform-context-verify` et
+`/dataform-context-golden-init`.
+
 ---
 
 ## Pourquoi
@@ -228,14 +282,17 @@ colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Forma
 et sort en code 1 au moindre écart — utilisable en CI. Conseil : couvrez 1 passthrough,
 1 agrégation, 1 chaîne de 3+ tables, 1 table incrémentale, 1 cas tordu (UNNEST/macro).
 
-**Construction guidée** : copiez la commande
-[`integrations/claude-code/commands/dataform-context-golden-init.md`](integrations/claude-code/commands/dataform-context-golden-init.md)
-(ou son équivalent
-[`integrations/cursor/commands/dataform-context-golden-init.md`](integrations/cursor/commands/dataform-context-golden-init.md)
-pour Cursor) dans `.claude/commands/` ou `.cursor/commands/`, puis lancez
+**Construction guidée** : copiez la commande équivalente pour votre outil, puis lancez
 `/dataform-context-golden-init` — l'agent propose des tracés (contre-vérifiés dans le
 SQL source), vous les validez via des questions interactives, le fichier est écrit et
 validé automatiquement.
+
+- Claude Code : [`integrations/claude-code/commands/dataform-context-golden-init.md`](integrations/claude-code/commands/dataform-context-golden-init.md) → `.claude/commands/`
+- Cursor : [`integrations/cursor/commands/dataform-context-golden-init.md`](integrations/cursor/commands/dataform-context-golden-init.md) → `.cursor/commands/`
+- Codex CLI : [`integrations/codex/skills/dataform-context-golden-init/`](integrations/codex/skills/dataform-context-golden-init/) → `.codex/skills/`
+- Antigravity : [`integrations/antigravity/workflows/dataform-context-golden-init.md`](integrations/antigravity/workflows/dataform-context-golden-init.md) → `.agents/workflows/`
+- Windsurf : [`integrations/windsurf/workflows/dataform-context-golden-init.md`](integrations/windsurf/workflows/dataform-context-golden-init.md) → `.windsurf/workflows/`
+- Copilot (VS Code) : [`integrations/copilot/prompts/dataform-context-golden-init.prompt.md`](integrations/copilot/prompts/dataform-context-golden-init.prompt.md) → `.github/prompts/`
 </details>
 
 <details>
