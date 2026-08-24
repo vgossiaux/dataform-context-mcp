@@ -75,3 +75,18 @@ conflit.
 > Windsurf ne supporte pas de configuration MCP scopée projet : chaque collègue doit
 > fusionner le snippet dans son fichier global **une fois par poste** — ce n'est pas
 > quelque chose qu'on committe avec le repo, à la différence des rules/workflows.
+
+## Copilot (VS Code)
+
+| Fichier | Destination | Rôle |
+|---|---|---|
+| `copilot/mcp.json.example` | `.vscode/mcp.json` | Déclare le serveur MCP (clé `servers`, pas `mcpServers`) |
+| `copilot/copilot-instructions.snippet.md` | `.github/copilot-instructions.md` | Fait adopter les outils par l'agent |
+| `copilot/prompts/dataform-context-verify.prompt.md` | `.github/prompts/` | Prompt file `/dataform-context-verify` |
+| `copilot/prompts/dataform-context-golden-init.prompt.md` | `.github/prompts/` | Prompt file `/dataform-context-golden-init` |
+
+> [!WARNING]
+> Ne pas créer de fichier `.mcp.json` à la racine pour Copilot : un `.mcp.json`
+> "portable" existe aussi côté VS Code (Agent Host / Copilot CLI, clé `servers`), mais
+> son nom collisionne avec le `.mcp.json` `mcpServers` déjà utilisé par Claude Code et
+> Cursor. Cibler exclusivement `.vscode/mcp.json`.
