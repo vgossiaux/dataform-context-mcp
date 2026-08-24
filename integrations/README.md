@@ -26,3 +26,18 @@ Les commandes Cursor sont du Markdown pur, sans frontmatter (Cursor ne documente
 format de métadonnées pour `.cursor/commands/`, contrairement à Claude Code) — même
 protocole, adapté pour ne pas dépendre de l'outil `AskUserQuestion` propre à Claude Code
 (la validation humaine se fait en chat normal).
+
+## Codex CLI
+
+| Fichier | Destination dans votre repo | Rôle |
+|---|---|---|
+| `codex/config.toml.snippet` | bloc à fusionner dans `.codex/config.toml` | Déclare le serveur MCP (portée projet) |
+| `codex/AGENTS.md.snippet.md` | bloc à coller dans `AGENTS.md` | Fait adopter les outils par l'agent |
+| `codex/skills/dataform-context-verify/` | `.codex/skills/` | Skill `dataform-context-verify` (diagnostic) |
+| `codex/skills/dataform-context-golden-init/` | `.codex/skills/` | Skill `dataform-context-golden-init` (construction interactive du golden set) |
+
+`.codex/config.toml` n'est lu que si le projet est **"trusted"** : au premier lancement
+de `codex` dans le repo, répondre "yes" au prompt de confiance (Codex l'enregistre dans
+`~/.codex/config.toml` sous `[projects."/chemin/absolu"] trust_level = "trusted"`). Les
+"custom prompts" (`~/.codex/prompts/`) existent mais sont **dépréciés** et non
+partageables via git — ne pas les utiliser, préférer les skills projet.
