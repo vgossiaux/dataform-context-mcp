@@ -15,7 +15,14 @@
 |---|---|---|
 | `cursor/mcp.json.example` | `.cursor/mcp.json` (fusionner si existant) | Déclare le serveur MCP |
 | `cursor/rules/dataform-context.mdc` | `.cursor/rules/` | Règle projet (adoption des outils) |
+| `cursor/commands/dataform-context-verify.md` | `.cursor/commands/` | Commande `/dataform-context-verify` (diagnostic) |
+| `cursor/commands/dataform-context-golden-init.md` | `.cursor/commands/` | Commande `/dataform-context-golden-init` (construction interactive du golden set, validation humaine) |
 
 Dans les deux cas : chemin **absolu** de `uvx` requis (`/opt/homebrew/bin/uvx` sur macOS
 homebrew) — un `uvx` nu échoue depuis un shell non-login. Prérequis par poste : `uv` et
 `@dataform/cli` ≥ 3.0, plus un accès SSH GitHub au repo.
+
+Les commandes Cursor sont du Markdown pur, sans frontmatter (Cursor ne documente pas de
+format de métadonnées pour `.cursor/commands/`, contrairement à Claude Code) — même
+protocole, adapté pour ne pas dépendre de l'outil `AskUserQuestion` propre à Claude Code
+(la validation humaine se fait en chat normal).

@@ -68,8 +68,14 @@ Même serveur, MCP stdio standard. Copiez
 [`integrations/cursor/mcp.json.example`](integrations/cursor/mcp.json.example) vers
 `.cursor/mcp.json` de votre repo, et la règle
 [`integrations/cursor/rules/dataform-context.mdc`](integrations/cursor/rules/dataform-context.mdc)
-vers `.cursor/rules/`. Tout le matériel d'intégration est récapitulé dans
-[`integrations/README.md`](integrations/README.md).
+vers `.cursor/rules/`. Les commandes
+[`dataform-context-verify.md`](integrations/cursor/commands/dataform-context-verify.md)
+et
+[`dataform-context-golden-init.md`](integrations/cursor/commands/dataform-context-golden-init.md)
+se copient dans `.cursor/commands/` pour obtenir `/dataform-context-verify` et
+`/dataform-context-golden-init` — même protocole que côté Claude Code (Cursor supporte
+les commandes personnalisées et, depuis la v1.5, l'elicitation MCP). Tout le matériel
+d'intégration est récapitulé dans [`integrations/README.md`](integrations/README.md).
 
 ---
 
@@ -224,9 +230,12 @@ et sort en code 1 au moindre écart — utilisable en CI. Conseil : couvrez 1 pa
 
 **Construction guidée** : copiez la commande
 [`integrations/claude-code/commands/dataform-context-golden-init.md`](integrations/claude-code/commands/dataform-context-golden-init.md)
-dans `.claude/commands/` puis lancez `/dataform-context-golden-init` — l'agent propose
-des tracés (contre-vérifiés dans le SQL source), vous les validez via des questions
-interactives, le fichier est écrit et validé automatiquement.
+(ou son équivalent
+[`integrations/cursor/commands/dataform-context-golden-init.md`](integrations/cursor/commands/dataform-context-golden-init.md)
+pour Cursor) dans `.claude/commands/` ou `.cursor/commands/`, puis lancez
+`/dataform-context-golden-init` — l'agent propose des tracés (contre-vérifiés dans le
+SQL source), vous les validez via des questions interactives, le fichier est écrit et
+validé automatiquement.
 </details>
 
 <details>
