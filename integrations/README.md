@@ -41,3 +41,23 @@ de `codex` dans le repo, répondre "yes" au prompt de confiance (Codex l'enregis
 `~/.codex/config.toml` sous `[projects."/chemin/absolu"] trust_level = "trusted"`). Les
 "custom prompts" (`~/.codex/prompts/`) existent mais sont **dépréciés** et non
 partageables via git — ne pas les utiliser, préférer les skills projet.
+
+## Antigravity
+
+| Fichier | Destination dans votre repo | Rôle |
+|---|---|---|
+| `antigravity/mcp_config.json.example` | `.agents/mcp_config.json` (fusionner si existant) | Déclare le serveur MCP |
+| `antigravity/rules/dataform-context.md` | `.agents/rules/` | Règle projet toujours active (`trigger: always_on`) |
+| `antigravity/workflows/dataform-context-verify.md` | `.agents/workflows/` | Workflow `/dataform-context-verify` (diagnostic) |
+| `antigravity/workflows/dataform-context-golden-init.md` | `.agents/workflows/` | Workflow `/dataform-context-golden-init` (construction interactive du golden set) |
+
+Le fichier d'instructions projet `AGENTS.md` (voir section Codex CLI) est aussi lu par
+Antigravity comme socle commun ; `GEMINI.md`, s'il existe, prend le pas en cas de
+conflit.
+
+> [!NOTE]
+> Chemin du dossier de Workflows non confirmé par la documentation officielle au
+> 2026-08-24 — livré sous `.agents/workflows/` (cohérent avec `.agents/rules/` et
+> `.agents/agents/`). Si `/dataform-context-verify` n'apparaît pas dans le menu `/` de
+> votre installation Antigravity, déplacez les 2 fichiers vers `.agent/workflows/`
+> (singulier, convention historique) et signalez lequel a fonctionné.
