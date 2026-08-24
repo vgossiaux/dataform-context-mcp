@@ -61,3 +61,17 @@ conflit.
 > `.agents/agents/`). Si `/dataform-context-verify` n'apparaît pas dans le menu `/` de
 > votre installation Antigravity, déplacez les 2 fichiers vers `.agent/workflows/`
 > (singulier, convention historique) et signalez lequel a fonctionné.
+
+## Windsurf
+
+| Fichier | Destination | Rôle |
+|---|---|---|
+| `windsurf/mcp_config.json.snippet` | bloc à fusionner dans `~/.codeium/windsurf/mcp_config.json` (**global, pas de portée projet**) | Déclare le serveur MCP |
+| `windsurf/rules/dataform-context.md` | `.windsurf/rules/` | Règle projet toujours active (`trigger: always_on`) |
+| `windsurf/workflows/dataform-context-verify.md` | `.windsurf/workflows/` | Workflow `/dataform-context-verify` |
+| `windsurf/workflows/dataform-context-golden-init.md` | `.windsurf/workflows/` | Workflow `/dataform-context-golden-init` |
+
+> [!IMPORTANT]
+> Windsurf ne supporte pas de configuration MCP scopée projet : chaque collègue doit
+> fusionner le snippet dans son fichier global **une fois par poste** — ce n'est pas
+> quelque chose qu'on committe avec le repo, à la différence des rules/workflows.
