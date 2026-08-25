@@ -223,7 +223,7 @@ dataform-context index            # compile + (re)construit l'index du repo cour
 dataform-context report           # résumé : couches, edges, couverture lineage
 dataform-context report --table ma_table    # contexte JSON d'une table
 dataform-context serve            # serveur MCP (stdio) — utilisé par .mcp.json
-dataform-context validate-golden --golden goldens.json   # oracle manuel
+dataform-context validate-golden  # oracle manuel (.dataform-context/golden_columns.json)
 ```
 
 `--repo /chemin` sur chaque commande pour viser un autre repo que le courant.
@@ -262,8 +262,10 @@ column extraction:
 <summary><strong>Golden sets : valider le lineage sur votre repo</strong></summary>
 
 Sans base de vérité externe, l'oracle est humain : vous tracez à la main quelques
-colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Format
-(`golden_columns.json`, liste d'entrées) :
+colonnes que vous connaissez, l'outil doit retrouver exactement ces edges. Le fichier
+va dans **`.dataform-context/golden_columns.json`** à la racine du repo Dataform —
+c'est là que `validate-golden` et `check_setup` le cherchent par défaut (`--golden`
+pour viser un autre chemin). Format (liste d'entrées) :
 
 ```json
 [

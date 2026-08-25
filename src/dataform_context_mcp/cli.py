@@ -19,7 +19,7 @@ from .db import (
     resolve,
     traverse,
 )
-from .golden import validate_entries
+from .golden import GOLDEN_RELPATH, locate_golden, validate_entries
 from .indexer import default_db_path, ensure_fresh
 
 
@@ -174,11 +174,21 @@ def cmd_validate_golden(args: argparse.Namespace, parser: argparse.ArgumentParse
     if not Path(db_path).exists():
         print(f"no index at {db_path} — run `dataform-context index` first", file=sys.stderr)
         return 2
-    golden_path = args.golden or (
-        args.repo / ".dataform-context" / "golden_columns.json" if args.repo else None
-    )
+    misplaced = None
+    if args.golden:
+        golden_path = args.golden
+    elif args.repo:
+        golden_path, misplaced = locate_golden(args.repo)
+    else:
+        golden_path = None
     if golden_path is None or not Path(golden_path).exists():
         print(f"golden file not found: {golden_path}", file=sys.stderr)
+        if misplaced:
+            print(
+                f"found one at {misplaced} instead — move it to "
+                f"{GOLDEN_RELPATH.as_posix()}, or pass --golden {misplaced}",
+                file=sys.stderr,
+            )
         return 2
     entries = json.loads(Path(golden_path).read_text())
     conn = open_db(db_path)

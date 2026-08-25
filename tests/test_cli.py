@@ -119,6 +119,16 @@ def test_validate_golden_fails_with_readable_diff(indexed_db, tmp_path, capsys):
     assert "missing" in out and "extra" in out
 
 
+def test_validate_golden_points_at_misplaced_file(indexed_db, tmp_path, capsys):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "golden_columns.json").write_text(json.dumps(GOLDEN_OK))
+    assert main(["validate-golden", "--db", str(indexed_db), "--repo", str(repo)]) == 2
+    err = capsys.readouterr().err
+    assert str(repo / "golden_columns.json") in err
+    assert "move it to" in err
+
+
 def test_all_commands_default_repo_to_cwd():
     from pathlib import Path
 

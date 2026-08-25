@@ -18,7 +18,7 @@ from mcp.server import MCPServer
 
 from . import db as store
 from .db import AmbiguousError, NotFoundError
-from .golden import validate_entries
+from .golden import GOLDEN_RELPATH, locate_golden, validate_entries
 from .indexer import ensure_fresh
 
 _MAX_DEPTH = 10
@@ -305,7 +305,7 @@ def create_server(
                     "detail": f"{extraction} — pct_ok={pct_ok}% (excluding sources)",
                 }
             )
-            golden_path = repo / ".dataform-context" / "golden_columns.json"
+            golden_path, misplaced = locate_golden(repo)
             if golden_path.exists():
                 summary = validate_entries(conn, json.loads(golden_path.read_text()))
                 failures = [r["label"] for r in summary["results"] if not r["ok"]]
@@ -317,12 +317,22 @@ def create_server(
                         + (f" — failing: {failures[:5]}" if failures else ""),
                     }
                 )
+            elif misplaced:
+                checks.append(
+                    {
+                        "name": "goldens",
+                        "ok": False,
+                        "detail": f"golden file in the wrong place: {misplaced.name} is at the "
+                        f"repo root — move it to {GOLDEN_RELPATH.as_posix()} for the tools "
+                        "to pick it up",
+                    }
+                )
             else:
                 checks.append(
                     {
                         "name": "goldens",
                         "ok": True,
-                        "detail": "no golden file (optional) — .dataform-context/golden_columns.json",
+                        "detail": f"no golden file (optional) — {GOLDEN_RELPATH.as_posix()}",
                     }
                 )
         finally:

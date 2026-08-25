@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 from .db import (
     AmbiguousError,
@@ -13,6 +14,23 @@ from .db import (
     known_columns,
     resolve,
 )
+
+GOLDEN_RELPATH = Path(".dataform-context") / "golden_columns.json"
+
+
+def locate_golden(repo: Path) -> tuple[Path, Path | None]:
+    """Resolve the golden file for a repo.
+
+    Returns (canonical_path, misplaced_path). `misplaced_path` is set when no file
+    sits at the canonical location but one exists at the repo root — the spot users
+    reach for first. Callers report it instead of claiming no golden set exists,
+    which is a silently wrong diagnostic.
+    """
+    canonical = repo / GOLDEN_RELPATH
+    if canonical.exists():
+        return canonical, None
+    root = repo / GOLDEN_RELPATH.name
+    return canonical, root if root.exists() else None
 
 
 def validate_entries(conn: sqlite3.Connection, entries: list[dict]) -> dict:

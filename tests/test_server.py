@@ -246,6 +246,30 @@ async def test_check_setup_without_goldens(server):
         assert "optional" in by_name["goldens"]["detail"]
 
 
+async def test_check_setup_flags_misplaced_golden(server, repo_copy):
+    """A golden file at the repo root is found but not where the tools look —
+    check_setup must say so instead of reporting 'no golden file'."""
+    (repo_copy / "golden_columns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table": "marts.mart_kpis",
+                    "column": "snapshot_date",
+                    "expected_edges": [],
+                    "expect_complete": True,
+                }
+            ]
+        )
+    )
+    async with Client(server) as client:
+        result = await call(client, "check_setup")
+        goldens = next(c for c in result["checks"] if c["name"] == "goldens")
+        assert goldens["ok"] is False
+        assert "golden_columns.json" in goldens["detail"]
+        assert ".dataform-context/golden_columns.json" in goldens["detail"]
+        assert "optional" not in goldens["detail"]
+
+
 async def test_check_setup_runs_goldens(server, repo_copy):
     golden_dir = repo_copy / ".dataform-context"
     golden_dir.mkdir()
