@@ -1,5 +1,7 @@
 <p align="center">
-  <h1 align="center">dataform-context-mcp</h1>
+  <h1 align="center">
+    <img src="docs/assets/logo-lockup.png" alt="Dataform Context" width="420">
+  </h1>
 </p>
 
 <p align="center">
