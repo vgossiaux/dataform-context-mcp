@@ -42,8 +42,22 @@ def validate_entries(conn: sqlite3.Connection, entries: list[dict]) -> dict:
     """
     results: list[dict] = []
     for entry in entries:
-        label = f"{entry['table']}.{entry['column']}"
+        if not isinstance(entry, dict):
+            results.append(
+                {
+                    "label": repr(entry)[:80],
+                    "ok": False,
+                    "problems": [
+                        f"golden entry invalid — expected an object, got {type(entry).__name__}"
+                    ],
+                }
+            )
+            continue
+        label = f"{entry.get('table', '?')}.{entry.get('column', '?')}"
         try:
+            for required in ("table", "column"):
+                if required not in entry:
+                    raise NotFoundError(f"missing required key '{required}'")
             action_id = resolve(conn, entry["table"])
             if entry["column"] not in known_columns(conn, action_id):
                 raise NotFoundError(f"unknown column '{entry['column']}'")
@@ -60,7 +74,7 @@ def validate_entries(conn: sqlite3.Connection, entries: list[dict]) -> dict:
                         down_column,
                     )
                 )
-        except (NotFoundError, AmbiguousError, ValueError) as err:
+        except (NotFoundError, AmbiguousError, ValueError, TypeError, AttributeError) as err:
             results.append(
                 {"label": label, "ok": False, "problems": [f"golden entry invalid — {err}"]}
             )
