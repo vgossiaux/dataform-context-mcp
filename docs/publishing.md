@@ -21,9 +21,13 @@ Une fois, avant la première publication :
 À chaque release :
 
 1. Arbre propre sur `main`, tests verts : `uv run pytest -q`.
-2. `scripts/release.sh X.Y.Z` (ou `X.Y.ZrcN` pour un essai sur TestPyPI).
-3. `git push origin main vX.Y.Z`.
-4. Approuver le job `publish-pypi` dans l'onglet Actions.
+2. Essai (optionnel mais recommandé pour une première) : `scripts/release.sh X.Y.ZrcN` puis
+   `git push origin main vX.Y.ZrcN`. Le job `publish-testpypi` publie sans approbation.
+   Vérifier : `uvx --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match --from "dataform-context-mcp==X.Y.ZrcN" dataform-context --help`.
+3. Release : `scripts/release.sh X.Y.Z` puis `git push origin main vX.Y.Z`.
+4. Approuver le job `publish-pypi` dans l'onglet Actions (environment `pypi`).
 5. Vérifier : `uvx --from dataform-context-mcp@latest dataform-context --help`.
+
+Un tag qui n'est ni `vX.Y.Z` ni `vX.Y.ZrcN` fait échouer le job `build` : rien n'est publié.
 
 Les utilisateurs reçoivent la version au prochain démarrage de leur serveur MCP.
