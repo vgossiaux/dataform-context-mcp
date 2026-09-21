@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,6 +97,11 @@ def open_db(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.executescript(_DDL)
+    # The index stores the compiled SQL of every action: owner-only on disk.
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass  # non-POSIX filesystems: best effort, never fail the open
     return conn
 
 

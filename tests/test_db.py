@@ -176,3 +176,14 @@ def test_meta_recorded(conn):
     assert meta["source_hash"] == "hash1"  # last rebuild in test_rebuild_idempotent
     assert meta["counts"]["actions"] == 10
     assert meta["counts"]["table_edges"] == 8
+
+
+def test_open_db_creates_file_readable_by_owner_only(tmp_path):
+    import os
+    import stat
+
+    path = tmp_path / "cache" / "ix.db"
+    connection = open_db(path)
+    connection.close()
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    assert mode == 0o600, f"expected 0600, got {oct(mode)}"
