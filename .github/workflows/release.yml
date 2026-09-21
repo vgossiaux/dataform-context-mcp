@@ -86,16 +86,44 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: dist
           path: dist/
-      - name: Create GitHub Release with generated notes and artifacts
+      - name: Create GitHub Release with commit-based notes and artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # Notes from commits since the previous stable tag: this repo takes direct
+          # commits on main, so PR-based --generate-notes would be empty.
+          prev="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+                  | grep -v rc | grep -vx "${GITHUB_REF_NAME}" | head -1)"
+          if [ -n "$prev" ]; then
+            range="${prev}..${GITHUB_REF_NAME}"
+            compare="**Full Changelog**: https://github.com/${GH_REPO}/compare/${prev}...${GITHUB_REF_NAME}"
+          else
+            range="${GITHUB_REF_NAME}"
+            compare=""
+          fi
+          {
+            echo "## Changes"
+            echo
+            git log "$range" --no-merges --format='- %s (%h)' \
+              | grep -v '^- chore(release):' || true
+            echo
+            echo "## Install"
+            echo
+            echo '```'
+            echo "uvx --from dataform-context-mcp@latest dataform-context serve"
+            echo '```'
+            echo
+            echo "$compare"
+          } > notes.md
           gh release create "${GITHUB_REF_NAME}" dist/* \
             --verify-tag \
             --title "${GITHUB_REF_NAME}" \
-            --generate-notes
+            --notes-file notes.md
