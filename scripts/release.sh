@@ -20,13 +20,14 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
   exit 1
 fi
 
-if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
-  echo "Releases are cut from main (current: $(git rev-parse --abbrev-ref HEAD))." >&2
-  exit 1
-fi
-
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$BRANCH" != "main" ]]; then
+  echo "Releases are cut from main (current: $BRANCH)." >&2
+  exit 1
+fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Working tree not clean — commit or stash first." >&2
