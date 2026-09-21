@@ -39,8 +39,7 @@ At the root of **your Dataform repo**, create or extend `.mcp.json`
     "dataform-context": {
       "type": "stdio",
       "command": "/opt/homebrew/bin/uvx",
-      "args": ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp",
-               "dataform-context", "serve"]
+      "args": ["--from", "dataform-context-mcp@latest", "dataform-context", "serve"]
     }
   }
 }
@@ -88,7 +87,7 @@ At the root of your repo, create or extend `.codex/config.toml`
 ```toml
 [mcp_servers.dataform-context]
 command = "/opt/homebrew/bin/uvx"
-args = ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp", "dataform-context", "serve"]
+args = ["--from", "dataform-context-mcp@latest", "dataform-context", "serve"]
 ```
 
 `.codex/config.toml` only loads for a **"trusted"** project: the first time you launch
@@ -217,7 +216,7 @@ Category details and surfacing: [`docs/lineage-limits.md`](docs/lineage-limits.m
 <summary><strong>CLI (without an agent)</strong></summary>
 
 From a local clone (`uv sync` first), or via
-`uvx --from git+ssh://git@github.com/vgossiaux/dataform-context-mcp dataform-context …`:
+`uvx --from dataform-context-mcp@latest dataform-context …`:
 
 ```bash
 dataform-context index            # compile + (re)build the current repo's index
