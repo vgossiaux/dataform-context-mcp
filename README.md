@@ -378,6 +378,7 @@ uv sync && uv run pytest        # 74 tests
 Les tests s'appuient sur un **mini repo Dataform synthétique compilable**
 (`tests/fixtures/mini_repo/`) — aucun test ne touche un repo réel.
 `uv run pytest -m "not integration"` tourne sans Node.
+- Publication PyPI : [`docs/publishing.md`](docs/publishing.md).
 </details>
 
 <details>
