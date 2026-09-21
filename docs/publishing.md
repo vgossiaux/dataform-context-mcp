@@ -25,7 +25,9 @@ Une fois, avant la première publication :
    `git push origin main vX.Y.ZrcN`. Le job `publish-testpypi` publie sans approbation.
    Vérifier : `uvx --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match --from "dataform-context-mcp==X.Y.ZrcN" dataform-context --help`.
 3. Release : `scripts/release.sh X.Y.Z` puis `git push origin main vX.Y.Z`.
-4. Approuver le job `publish-pypi` dans l'onglet Actions (environment `pypi`).
+4. Approuver le job `publish-pypi` dans l'onglet Actions (environment `pypi`). Le job
+   `github-release` crée ensuite la GitHub Release avec les notes générées depuis les commits
+   et les artefacts `dist/`.
 5. Vérifier : `uvx --from dataform-context-mcp@latest dataform-context --help`.
 
 Un tag qui n'est ni `vX.Y.Z` ni `vX.Y.ZrcN` fait échouer le job `build` : rien n'est publié.

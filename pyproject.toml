@@ -29,7 +29,7 @@ dependencies = [
 Homepage = "https://github.com/vgossiaux/dataform-context-mcp"
 Repository = "https://github.com/vgossiaux/dataform-context-mcp"
 Issues = "https://github.com/vgossiaux/dataform-context-mcp/issues"
-Changelog = "https://github.com/vgossiaux/dataform-context-mcp/tags"
+Changelog = "https://github.com/vgossiaux/dataform-context-mcp/releases"
 
 [project.scripts]
 dataform-context = "dataform_context_mcp.cli:main"
