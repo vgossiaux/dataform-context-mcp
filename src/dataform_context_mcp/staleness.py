@@ -7,6 +7,7 @@ Watched set: definitions/**, includes/**, workflow_settings.yaml, dataform.json.
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 _WATCHED_DIRS = ("definitions", "includes")
@@ -18,8 +19,16 @@ def source_hash(repo: Path) -> str:
     files: list[Path] = []
     for dirname in _WATCHED_DIRS:
         root = repo / dirname
-        if root.is_dir():
-            files.extend(p for p in root.rglob("*") if p.is_file())
+        if not root.is_dir():
+            continue
+        # followlinks=False: a symlink to a large tree in a client repo must not
+        # make every tool call re-hash it. Symlinked files are skipped too.
+        for current, dirnames, filenames in os.walk(root, followlinks=False):
+            dirnames.sort()
+            for filename in filenames:
+                path = Path(current) / filename
+                if not path.is_symlink() and path.is_file():
+                    files.append(path)
     for filename in _WATCHED_FILES:
         path = repo / filename
         if path.is_file():
