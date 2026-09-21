@@ -17,7 +17,7 @@ Ce choix protège contre l'exécution de commits non revus (`main`), mais :
 | Consommateurs | Aujourd'hui l'auteur seul ; demain des inconnus qui installent le serveur chez leurs clients |
 | Comportement à la publication d'un correctif | Reçu au prochain démarrage du serveur MCP, sans action de l'utilisateur |
 | Canal | PyPI uniquement, paquet `dataform-context-mcp` |
-| Réseau au démarrage | Autorisé à chaque démarrage, via `uvx`, repli sur le cache hors ligne |
+| Réseau au démarrage | Exigé à chaque démarrage, via `uvx`. Testé le 2026-09-21 : `uvx …@latest` échoue hors ligne, pas de repli sur le cache. Un wrapper `sh -c "… \|\| uvx --offline …"` fonctionne mais a été écarté pour garder un snippet lisible et portable |
 | Garde-fou de majeure | Non retenu (`@latest` simple) |
 
 ## Design
@@ -26,8 +26,9 @@ Ce choix protège contre l'exécution de commits non revus (`main`), mais :
 
 - Paquet PyPI `dataform-context-mcp`, versions semver, source de vérité `pyproject.toml`.
 - Snippet unique dans toute la documentation :
-  `uvx dataform-context-mcp@latest dataform-context serve`
-  (`command` reste le chemin absolu de `uvx`, contrainte existante du README).
+  `uvx --from dataform-context-mcp@latest dataform-context serve`
+  (`--from` est obligatoire car la commande `dataform-context` ne porte pas le nom du paquet ;
+  `command` reste le chemin absolu de `uvx`, contrainte existante du README).
 - Fait vérifié dans la doc `uv` : `uvx pkg` réutilise le cache et ne voit jamais une nouvelle
   version ; `uvx pkg@latest` rafraîchit le cache à chaque exécution. Aucun code de vérification
   de version côté serveur.
@@ -67,21 +68,22 @@ Fichiers concernés (7) : `README.md` (3 occurrences), `integrations/antigravity
 `integrations/windsurf/mcp_config.json.snippet`.
 
 - `["--from", "git+ssh://…@vX.Y.Z", "dataform-context", "serve"]` devient
-  `["dataform-context-mcp@latest", "dataform-context", "serve"]` (forme `uvx pkg@latest cmd`,
-  à confirmer par le test manuel de la section 5 ; sinon `--from dataform-context-mcp@latest`).
+  `["--from", "dataform-context-mcp@latest", "dataform-context", "serve"]`.
 - README, bloc « Gouvernance & audit » : « Zéro appel réseau à l'exécution » devient
   « Zéro appel réseau du serveur : `uvx` interroge PyPI au démarrage pour servir la dernière
-  version, et retombe sur le cache hors ligne. Le serveur lui-même n'ouvre aucune connexion. »
-- README, nouvelle sous-section « Figer une version » : `uvx dataform-context-mcp@0.5.0 …` pour
-  les environnements qui exigent la reproductibilité, avec la mention que les correctifs ne sont
-  alors plus reçus automatiquement.
+  version. Le serveur lui-même n'ouvre aucune connexion. Hors ligne, le démarrage échoue :
+  remplacer `@latest` par une version exacte le temps de la coupure. »
+- README, nouvelle sous-section « Figer une version ou travailler hors ligne » :
+  `uvx --from dataform-context-mcp@0.5.0 dataform-context serve` pour la reproductibilité ou
+  l'absence de réseau, avec la mention que les correctifs ne sont alors plus reçus
+  automatiquement.
 - Le paragraphe FR et le paragraphe EN du README sont tous deux mis à jour.
 
 ### 5. Vérification
 
-1. Spike (5 min, hors plan) : comportement de `uvx x@latest` hors ligne. Résultat attendu :
-   repli sur le cache avec avertissement. Si `uvx` échoue hors ligne, le README le dit et
-   propose `uvx --offline` comme contournement.
+1. Spike fait le 2026-09-21 : `uvx --from x@latest` échoue hors ligne (proxy injoignable, index
+   inchangé) ; `uvx --offline --from x@latest` sert le cache. Décision B : pas de wrapper,
+   documentation du comportement.
 2. Dry run : trusted publisher configuré sur `test.pypi.org`, tag `v0.5.0rc1` publié sur
    TestPyPI, installation testée avec `--index-url https://test.pypi.org/simple/`.
 3. Publication réelle : tag `v0.5.0`, `uvx dataform-context-mcp@latest dataform-context --help`
