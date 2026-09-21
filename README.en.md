@@ -62,6 +62,19 @@ into your repo's `.claude/commands/` to get `/dataform-context-verify`.
 Recommended: add the agent-instruction block to the repo's `CLAUDE.md` (see
 [Getting the agent to adopt the tools](#getting-the-agent-to-adopt-the-tools)).
 
+### Pin a version or work offline
+
+`@latest` makes `uvx` check PyPI on every server start: fixes reach you with no action on
+your side, at the cost of a mandatory network access at start-up (1 to 3 s). Offline, the
+server does not start. To pin a version, or to ride out an outage, replace `@latest` with an
+exact version:
+
+```json
+"args": ["--from", "dataform-context-mcp@0.5.0", "dataform-context", "serve"]
+```
+
+A pinned version no longer receives fixes: remember to bump it.
+
 ## Install with Cursor
 
 Same server, standard MCP stdio. Copy
@@ -289,10 +302,18 @@ Designed to pass a corporate security review before deployment on a client repo:
 - **Exhaustive runtime dependencies**: `mcp` (official Model Context Protocol SDK) and
   `sqlglot` — exact pins in `uv.lock`; everything else is stdlib (`sqlite3`,
   `argparse`, `hashlib`, `difflib`).
-- **Zero network calls at runtime**: reads the repo's files + local
-  `dataform compile --json` shell-out. No warehouse access, no telemetry.
+- **Zero network calls from the server**: reads the repo's files + local
+  `dataform compile --json` shell-out. No warehouse access, no telemetry. Only `uvx`
+  reaches PyPI at start-up to serve the latest published version (see "Pin a version or
+  work offline").
 - **Zero LLM at runtime**: deterministic parsing (Dataform compiler + sqlglot).
 - **Local data only**: SQLite index in `~/.cache/dataform-context-mcp/`.
+- **Trust boundary = the indexed repo**: `dataform compile` runs the target repo's
+  JavaScript (`includes/`, `*.js`) with the user's privileges on every re-index. Only
+  index Dataform repos you trust; never point `--repo` at an unreviewed clone.
+- **Cache contents**: the SQLite index holds the compiled SQL of every action
+  (`query`, `incremental_query`). The file is created with mode `0600` (owner-readable
+  only). To purge: `rm -rf ~/.cache/dataform-context-mcp/`.
 - **This repo contains no client metadata**: synthetic fixtures, aggregated reports
   only.
 </details>

@@ -63,6 +63,19 @@ dans `.claude/commands/` de votre repo pour avoir `/dataform-context-verify`.
 Recommandé : ajoutez au `CLAUDE.md` du repo le bloc d'instructions agent (voir
 [Faire adopter les outils par l'agent](#faire-adopter-les-outils-par-lagent)).
 
+### Figer une version ou travailler hors ligne
+
+`@latest` demande à `uvx` de vérifier PyPI à chaque démarrage du serveur : vous recevez
+les correctifs sans rien faire, au prix d'un accès réseau obligatoire au démarrage (1 à
+3 s). Hors ligne, le serveur ne démarre pas. Pour figer une version, ou le temps d'une
+coupure, remplacez `@latest` par une version exacte :
+
+```json
+"args": ["--from", "dataform-context-mcp@0.5.0", "dataform-context", "serve"]
+```
+
+Une version figée ne reçoit plus les correctifs : pensez à la remettre à jour.
+
 ## Installation avec Cursor
 
 Même serveur, MCP stdio standard. Copiez
@@ -306,8 +319,10 @@ Conçu pour passer une revue sécurité d'entreprise avant déploiement sur un r
 - **Dépendances runtime exhaustives** : `mcp` (SDK officiel Model Context Protocol) et
   `sqlglot` — pins exacts dans `uv.lock` ; tout le reste est stdlib (`sqlite3`,
   `argparse`, `hashlib`, `difflib`).
-- **Zéro appel réseau à l'exécution** : lecture des fichiers du repo + shell-out
-  `dataform compile --json` local. Pas d'accès au warehouse, pas de télémétrie.
+- **Zéro appel réseau du serveur** : lecture des fichiers du repo + shell-out
+  `dataform compile --json` local. Pas d'accès au warehouse, pas de télémétrie. Seul `uvx`
+  interroge PyPI au démarrage pour servir la dernière version publiée (voir « Figer une
+  version ou travailler hors ligne »).
 - **Zéro LLM à l'exécution** : parsing déterministe (compilateur Dataform + sqlglot).
 - **Données locales uniquement** : index SQLite dans `~/.cache/dataform-context-mcp/`.
 - **Frontière de confiance = le repo indexé** : `dataform compile` exécute le JavaScript
