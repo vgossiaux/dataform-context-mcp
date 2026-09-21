@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# scripts/release.sh — cut a release: bump pyproject.toml, pin every install
-# snippet (README + integrations/*) to the new tag, commit, and tag.
+# scripts/release.sh — cut a release: bump pyproject.toml, sync uv.lock, commit, tag.
 #
-# Why: uvx installs of this tool are consumed as `git+ssh://.../dataform-context-mcp`
-# by client repos. Left unpinned, that resolves to whatever is on `main` at the
-# moment the MCP server (re)starts — i.e. unreviewed code execution on every
-# restart once this repo's SSH access is shared beyond a single maintainer.
-# Every install snippet in this repo must always show a pinned `@vX.Y.Z`.
+# Distribution model: the package is published to PyPI by .github/workflows/release.yml
+# when the tag is pushed (trusted publishing). Install snippets use
+# `uvx --from dataform-context-mcp@latest`, so users pick up the new version at their
+# next MCP server start — nothing to rewrite in the docs here.
 #
-# Usage: scripts/release.sh <version>   (e.g. scripts/release.sh 0.2.0)
-# Does NOT push — review the commit/tag locally, then:
-#   git push origin main --tags
+# Usage: scripts/release.sh <version>      e.g. scripts/release.sh 0.5.0
+#        scripts/release.sh 0.5.0rc1       -> publishes to TestPyPI (dry run)
+# Does NOT push. Review locally, then: git push origin main v<version>
 
-VERSION="${1:?Usage: scripts/release.sh <version> (e.g. 0.2.0)}"
+VERSION="${1:?Usage: scripts/release.sh <version> (e.g. 0.5.0)}"
 TAG="v${VERSION}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -30,33 +28,20 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
 fi
 
 echo "== Bumping pyproject.toml to ${VERSION} =="
-sed -i '' -E "s/^version = \"[^\"]+\"/version = \"${VERSION}\"/" pyproject.toml
+uv version "${VERSION}"
 
-echo "== Pinning install snippets to @${TAG} =="
-# Only the uvx-style git+ssh install URL, never the plain `git clone` URL used
-# for dev setup (that one legitimately tracks main).
-PATTERN='git\+ssh://git@github\.com/vgossiaux/dataform-context-mcp(@[A-Za-z0-9._/-]+)?'
-REPLACEMENT="git+ssh://git@github.com/vgossiaux/dataform-context-mcp@${TAG}"
-
-FILES=$(grep -rl "git+ssh://git@github.com/vgossiaux/dataform-context-mcp" README.md integrations/ 2>/dev/null || true)
-if [[ -z "$FILES" ]]; then
-  echo "No install snippets found referencing the git+ssh URL — nothing to pin." >&2
-else
-  for f in $FILES; do
-    sed -i '' -E "s#${PATTERN}#${REPLACEMENT}#g" "$f"
-    echo "  pinned: $f"
-  done
-fi
+echo "== Syncing uv.lock =="
+uv lock
 
 echo
 echo "== Diff =="
 git diff --stat
 
-git add pyproject.toml README.md integrations/
+git add pyproject.toml uv.lock
 git commit -m "chore(release): ${TAG}"
 git tag -a "$TAG" -m "Release ${TAG}"
 
 echo
 echo "Done: ${TAG} committed and tagged locally."
-echo "Review: git show ${TAG}"
-echo "Publish: git push origin main --tags"
+echo "Review:  git show ${TAG}"
+echo "Publish: git push origin main ${TAG}"
