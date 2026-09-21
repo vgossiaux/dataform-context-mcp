@@ -3,14 +3,33 @@ name = "dataform-context-mcp"
 version = "0.4.0"
 description = "Deterministic, self-hosted MCP server exposing structured Dataform pipeline context (lineage, schemas, layers) to coding agents"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Vincent Gossiaux" }
 ]
 requires-python = ">=3.12"
+keywords = ["dataform", "bigquery", "mcp", "lineage", "analytics-engineering"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "mcp[cli]>=2.0.0",
     "sqlglot>=30.17.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/vgossiaux/dataform-context-mcp"
+Repository = "https://github.com/vgossiaux/dataform-context-mcp"
+Issues = "https://github.com/vgossiaux/dataform-context-mcp/issues"
+Changelog = "https://github.com/vgossiaux/dataform-context-mcp/releases"
 
 [project.scripts]
 dataform-context = "dataform_context_mcp.cli:main"

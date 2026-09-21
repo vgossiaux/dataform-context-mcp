@@ -8,3 +8,4 @@ spike-output/
 local/
 .DS_Store
 .mcp.json
+dist/
