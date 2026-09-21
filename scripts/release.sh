@@ -14,6 +14,17 @@ set -euo pipefail
 
 VERSION="${1:?Usage: scripts/release.sh <version> (e.g. 0.5.0)}"
 TAG="v${VERSION}"
+
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
+  echo "Version must be X.Y.Z or X.Y.ZrcN (got: $VERSION)" >&2
+  exit 1
+fi
+
+if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
+  echo "Releases are cut from main (current: $(git rev-parse --abbrev-ref HEAD))." >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
