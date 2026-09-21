@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">
-    <img src="docs/assets/logo-lockup.png" alt="Dataform Context" width="420">
+    <img src="https://raw.githubusercontent.com/vgossiaux/dataform-context-mcp/main/docs/assets/logo-lockup.png" alt="Dataform Context" width="420">
   </h1>
 </p>
 
@@ -162,8 +162,8 @@ amont oubliées lors d'un refactor, impact aval sous-estimé — la cascade
 | Un lineage introuvable passe pour « pas de dépendance » | Statuts explicites + `complete: false` + `warnings` — **jamais de faux vide** |
 | Contexte figé au moment de la lecture | Ré-indexation lazy par hash de contenu à chaque appel |
 
-**Déterministe et self-hosted** : aucun LLM, aucun appel réseau, aucun accès au warehouse
-à l'exécution. Mêmes fichiers → même index → mêmes réponses.
+**Déterministe et self-hosted** : aucun LLM, aucun appel réseau du serveur, aucun accès au
+warehouse à l'exécution. Mêmes fichiers → même index → mêmes réponses.
 
 ```
 .sqlx + includes/ ──▶ dataform compile --json ──▶ parsing du CompiledGraph

@@ -2,7 +2,7 @@
 name = "dataform-context-mcp"
 version = "0.4.0"
 description = "Deterministic, self-hosted MCP server exposing structured Dataform pipeline context (lineage, schemas, layers) to coding agents"
-readme = "README.md"
+readme = "README.en.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -29,13 +29,13 @@ dependencies = [
 Homepage = "https://github.com/vgossiaux/dataform-context-mcp"
 Repository = "https://github.com/vgossiaux/dataform-context-mcp"
 Issues = "https://github.com/vgossiaux/dataform-context-mcp/issues"
-Changelog = "https://github.com/vgossiaux/dataform-context-mcp/releases"
+Changelog = "https://github.com/vgossiaux/dataform-context-mcp/tags"
 
 [project.scripts]
 dataform-context = "dataform_context_mcp.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.11.32,<0.12.0"]
+requires = ["uv_build>=0.12.0,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]

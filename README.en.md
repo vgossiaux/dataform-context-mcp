@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">
-    <img src="docs/assets/logo-lockup.png" alt="Dataform Context" width="420">
+    <img src="https://raw.githubusercontent.com/vgossiaux/dataform-context-mcp/main/docs/assets/logo-lockup.png" alt="Dataform Context" width="420">
   </h1>
 </p>
 
@@ -161,8 +161,8 @@ missed during refactors, underestimated downstream impact — the
 | An unresolvable lineage looks like "no dependency" | Explicit statuses + `complete: false` + `warnings` — **never a false empty** |
 | Context frozen at read time | Lazy re-indexing on content hash at every call |
 
-**Deterministic and self-hosted**: no LLM, no network calls, no warehouse access at
-runtime. Same files → same index → same answers.
+**Deterministic and self-hosted**: no LLM, no network calls from the server, no warehouse
+access at runtime. Same files → same index → same answers.
 
 ```
 .sqlx + includes/ ──▶ dataform compile --json ──▶ CompiledGraph parsing
