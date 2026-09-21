@@ -39,7 +39,7 @@ Prérequis (une fois par poste) : [uv](https://docs.astral.sh/uv/) (`brew instal
     "dataform-context": {
       "type": "stdio",
       "command": "/opt/homebrew/bin/uvx",
-      "args": ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.3.0",
+      "args": ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.4.0",
                "dataform-context", "serve"]
     }
   }
@@ -89,7 +89,7 @@ Prérequis : [uv](https://docs.astral.sh/uv/) et `@dataform/cli` ≥ 3.0.
 ```toml
 [mcp_servers.dataform-context]
 command = "/opt/homebrew/bin/uvx"
-args = ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.3.0", "dataform-context", "serve"]
+args = ["--from", "git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.4.0", "dataform-context", "serve"]
 ```
 
 `.codex/config.toml` n'est chargé que pour un projet **"trusted"** : au premier
@@ -218,7 +218,7 @@ Détail des catégories et du surfaçage : [`docs/lineage-limits.md`](docs/linea
 <summary><strong>CLI (sans agent)</strong></summary>
 
 Depuis un clone local du repo (`uv sync` d'abord), ou via
-`uvx --from git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.3.0 dataform-context …` :
+`uvx --from git+ssh://git@github.com/vgossiaux/dataform-context-mcp@v0.4.0 dataform-context …` :
 
 ```bash
 dataform-context index            # compile + (re)construit l'index du repo courant
