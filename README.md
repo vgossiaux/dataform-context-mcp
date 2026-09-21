@@ -311,6 +311,13 @@ Conçu pour passer une revue sécurité d'entreprise avant déploiement sur un r
   `dataform compile --json` local. Pas d'accès au warehouse, pas de télémétrie.
 - **Zéro LLM à l'exécution** : parsing déterministe (compilateur Dataform + sqlglot).
 - **Données locales uniquement** : index SQLite dans `~/.cache/dataform-context-mcp/`.
+- **Frontière de confiance = le repo indexé** : `dataform compile` exécute le JavaScript
+  du repo cible (`includes/`, `*.js`) avec les droits de l'utilisateur, à chaque
+  ré-indexation. N'indexer que des repos Dataform de confiance ; ne jamais pointer
+  `--repo` sur un clone non revu.
+- **Contenu du cache** : l'index SQLite contient le SQL compilé de chaque action
+  (`query`, `incremental_query`). Le fichier est créé en mode `0600` (lecture par
+  l'utilisateur seul). Pour purger : `rm -rf ~/.cache/dataform-context-mcp/`.
 - **Ce repo ne contient aucune métadonnée client** : fixtures synthétiques, rapports
   agrégés uniquement.
 </details>
